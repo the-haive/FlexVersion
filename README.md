@@ -105,4 +105,7 @@ I did this project instead of GitVersion because:
 
 Now, all the issues I was having could be me doing something wrong in the configuration. While looking into things I got my own idea on how to approach this and that is what triggered this project.
 
-**License: MIT**
+## License
+Copyright (c) 2018 IntelliSearch Software AS.
+
+GitSemVer is provided as-is under the MIT license. For more information see LICENSE.

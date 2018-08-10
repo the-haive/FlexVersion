@@ -1,26 +1,40 @@
 # GitSemVer
 Calculates SemVer version based on information from the git-repo (commits, merges and tags) as well as your GitSemVer configuration.
 
-This library/tool uses the git repo as a source for calculating which SemVer version your project is currently at. It is inspired by
-GitVersion, but uses a different algorithm and solution to find versioning information. See at the bottom for reasons I did this instead of using GitVersion.
+This library/tool uses the git repo as a source for calculating which SemVer version your project is currently at. It is inspired by GitVersion, but uses a different algorithm and solution to find versioning information. See at the bottom for reasons I did this instead of using GitVersion.
 
 ## Concepts
-A central concept is the version-source. The version-source can be a tag, a merge or a fallback value. Each commit (or merge-commit) after
-the version-source can (depending on your settings bump the major, minor, patch or pre-count of the version.
+A central concept is the **version-source**. The version-source can be a tag, a merge or a fallback value. Each commit (or merge-commit) after the version-source can (depending on your settings bump the major, minor, patch or pre-count of the version.
 
-Another central part is that this system allows for a prerelease-count to be automatically calculated. The idea is that each commit in the 
-repo, will have an identifyable *pre-release* version, by adding a label and a pre-count as sem-ver prerelease information.
+Another central part is that this system allows for a **prerelease-count** to be automatically calculated. The idea is that each commit in the repo, will have an identifyable **pre-release** version, by adding a label and a pre-count as sem-ver prerelease information. Thus, this allows you to push pre-release packages to your nuGet feed too, without overwriting a previous package.
 
-The project has a central library, GitSemVer (.NetStandard 2.0), that can be used as a dll in your .Net project.
+The console app uses a **configuration file** for controlling the setup. It is very flexible and simple to use. You can control how each branch behaves in a simple and intuitive manner.
+
+## Library
+The project core library, GitSemVer is implemented to target .NetStandard 2.0. This library can be used as a dll in your .Net project. This means that it can be used by a any .Net implementation that supports .Net Standard 2.0. At the time of writing this:
+
+* .Net Core 2.0+
+* .Net Framework 4.6.1+
+* Mono 5.4+ 
+* Xamarin.iOS 10.14+
+* Xamarin.Mac 3.8+
+* Xamarin.Android 8.0+
+* Universal Windows Platform 10.0.16299+
+
+Ref: [.NET Standard Implementation support](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 
 ## Console app
-There is also an executable that allows you to run this in a console, and which outputs the results in a JSON format.
+There is also an executable that allows you to run this in a console, and which outputs the results in a JSON format. 
 
-Since the console project is created using .Net Core it can run on Linux, Mac and Windows.
+Since the console project is created using .Net Core it can run on Linux, Mac and Windows [full specification](https://github.com/dotnet/core/blob/master/release-notes/2.0/2.0-supported-os.md).
 
-The console app is bare bones in its set up. No help output (yet). It optionally takes two parameters:
+The console app is "bare-bones" in its current set-up (i.e. no help for instance - yet). 
+
+It optionally takes two parameters:
 * The path to the settings-file (.\gitsemver.yml if omitted)
 * The path to the repo (current directory if omitted)
+
+The console app itself doesn't really have to take many options as all configuration should be done in the settings-file.
 
 ## Settings
 The settings-file is formatted via YAML. 
@@ -50,7 +64,7 @@ Branches:
       Hotfix: BumpPatch # Every merge from hotfix to master should bump the patch-number.
     Label: # No label for the master releases
   Support:
-    Regex: support[/-]
+    Regex: support[/-] 
     OnCommit: BumpPatch
     OnMerge:
       Release: BumpMajor
@@ -82,4 +96,3 @@ I did this project instead of GitVersion because:
 * Response on the project on GitHub seems slow. Not sure if it is being maintained.
 
 Now, all the issues I was having could be me doing something wrong in the configuration. While looking into things I got my own idea on how to approach this and that is what triggered this project.
-

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "IntelliSearch.GitSemVer.Console": {
+      "commandName": "Project",
+      "commandLineArgs": ".\\settings.yml D:\\src\\INTS\\ent"
+    }
+  }
+}

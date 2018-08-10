@@ -37,9 +37,10 @@ namespace IntelliSearch.GitSemVer
         /// </summary>
         /// <param name="settingsAsYamlFilePath"></param>
         /// <param name="repoPath"></param>
-        public GitSemVer(string settingsAsYamlFilePath, string repoPath = null)
+        public GitSemVer(string settingsAsYamlFilePath = null, string repoPath = null)
         {
             _repoPath = repoPath ?? Environment.CurrentDirectory;
+            settingsAsYamlFilePath = settingsAsYamlFilePath ?? @".\gitsemver.yml";
 
             if (!File.Exists(settingsAsYamlFilePath)) throw new ArgumentException($"The settings-file cannot be found at '{settingsAsYamlFilePath}'");
 
@@ -162,7 +163,7 @@ namespace IntelliSearch.GitSemVer
                         // This commit is the version-source. We should add partial results break.
                         result.BranchSettings = new KeyValuePair<string, BranchSettings>(settingsBranchName, branchSettings);
                         result.VersionSource = new VersionSource(commit, versionSource, tags[c.Sha].tagName, tags[c.Sha].annotationMessage, major, minor, patch);
-                        result.GitInfo = new GitInfo(branchName, activeCommits);
+                        result.GitInfo = new GitInfo(_repoPath, branchName, activeCommits);
                         break;
                     }
                 }

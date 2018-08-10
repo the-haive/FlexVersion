@@ -30,8 +30,6 @@ Since the console project is created using .Net Core it can run on Linux, Mac an
 
 The console app is "bare-bones" in its current set-up (i.e. no help for instance - yet). 
 
-**License: MIT**
-
 It optionally takes two parameters:
 * The path to the settings-file (.\gitsemver.yml if omitted)
 * The path to the repo (current directory if omitted)
@@ -106,3 +104,5 @@ I did this project instead of GitVersion because:
 * Response on the project on GitHub seems slow. Not sure if it is being maintained.
 
 Now, all the issues I was having could be me doing something wrong in the configuration. While looking into things I got my own idea on how to approach this and that is what triggered this project.
+
+**License: MIT**

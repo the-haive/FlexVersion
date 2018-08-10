@@ -82,6 +82,14 @@ Branches:
   Hotfix:
     Regex: hotfix[/-]
 ```
+
+## TODO
+* Use GitSemVer on GitSemVer to set version, yay!
+* Set up CI  build and push to NuGet
+* Implement Cake addin
+* Handle pre-release label overrides via tag (and branch?). Specifically handy for release-candidates in GitFlow where the `beta` label is to be replaced with i.e. `RC` or `RC1`.
+* Write tests.
+
 ## Disclaimer
 This project is in its early days (alpha state), and although it "works for me" it might not "work for you". Use at your own risk. If you find any issues or have any suggestions plese create an issue on the issue page. Or, if you want to contribute then that is super-cool too :).
 

@@ -1,12 +1,10 @@
 # GitSemVer
-Get SemVer versioning based on information from the git-repo (commits, merges and tags)
-
-**Note: Alpha-state** 
-This project is in its early days, and although it "works for me" it might not "work for you". Use at your own risk. If you find any issues or have any suggestions plese create an issue. Or, if you want to contribute then that is super-cool too :).
+Calculates SemVer version based on information from the git-repo (commits, merges and tags) as well as your GitSemVer configuration.
 
 This library/tool uses the git repo as a source for calculating which SemVer version your project is currently at. It is inspired by
 GitVersion, but uses a different algorithm and solution to find versioning information. See at the bottom for reasons I did this instead of using GitVersion.
 
+## Concepts
 A central concept is the version-source. The version-source can be a tag, a merge or a fallback value. Each commit (or merge-commit) after
 the version-source can (depending on your settings bump the major, minor, patch or pre-count of the version.
 
@@ -70,6 +68,8 @@ Branches:
   Hotfix:
     Regex: hotfix[/-]
 ```
+## Disclaimer
+This project is in its early days (alpha state), and although it "works for me" it might not "work for you". Use at your own risk. If you find any issues or have any suggestions plese create an issue on the issue page. Or, if you want to contribute then that is super-cool too :).
 
 ## Why not just use GitVersion?
 I did this project instead of GitVersion because:

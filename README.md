@@ -30,6 +30,8 @@ Since the console project is created using .Net Core it can run on Linux, Mac an
 
 The console app is "bare-bones" in its current set-up (i.e. no help for instance - yet). 
 
+**License: MIT**
+
 It optionally takes two parameters:
 * The path to the settings-file (.\gitsemver.yml if omitted)
 * The path to the repo (current directory if omitted)

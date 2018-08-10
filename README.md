@@ -1,7 +1,8 @@
 # GitSemVer
 Get SemVer versioning based on information from the git-repo (commits, merges and tags)
 
-**Note: Alpha state** This project is in its early days, and although it "works for me" it might not "work for you". Use at your own risk. If you find any issues or have any suggestions plese create an issue. Or, if you want to contribute then that is super-cool too :).
+**Note: Alpha-state** 
+This project is in its early days, and although it "works for me" it might not "work for you". Use at your own risk. If you find any issues or have any suggestions plese create an issue. Or, if you want to contribute then that is super-cool too :).
 
 This library/tool uses the git repo as a source for calculating which SemVer version your project is currently at. It is inspired by
 GitVersion, but uses a different algorithm and solution to find versioning information. See at the bottom for reasons I did this instead of using GitVersion.

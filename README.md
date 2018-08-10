@@ -18,7 +18,7 @@ There is also an executable that allows you to run this in a console, and which 
 Since the console project is created using .Net Core it can run on Linux, Mac and Windows.
 
 The console app is bare bones in its set up. No help output (yet). It optionally takes two parameters:
-* The path to the settings-file (.\settings.yml if omitted)
+* The path to the settings-file (.\gitsemver.yml if omitted)
 * The path to the repo (current directory if omitted)
 
 ## Settings

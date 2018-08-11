@@ -8,10 +8,10 @@ namespace IntelliSearch.GitSemVer.Console
     {
         static void Main(string[] args)
         {
-            var settingsFile = args.Length > 0 ? args[0] : @".\gitsemver.yml";
+            var configurationFile = args.Length > 0 ? args[0] : @".\gitsemver.yml";
             var repoPath = args.Length > 1 ? args[1] : Environment.CurrentDirectory;
 
-            var gitSemVer = new GitSemVer(settingsFile, repoPath);
+            var gitSemVer = new GitSemVer(configurationFile, repoPath);
             var result = gitSemVer.Analyze();
 
             var resultAsJson = JsonConvert.SerializeObject(result, Formatting.Indented);

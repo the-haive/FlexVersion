@@ -14,4 +14,13 @@
     <ProjectReference Include="..\IntelliSearch.GitSemVer\IntelliSearch.GitSemVer.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="test.yml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="gitsemver.yml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

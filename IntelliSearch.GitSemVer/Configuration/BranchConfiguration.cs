@@ -3,7 +3,7 @@
 namespace IntelliSearch.GitSemVer.Configuration
 {
     /// <summary>
-    /// BranchSettings holds information about a branch's configuration.
+    /// BranchConfiguration holds information about a branch's configuration.
     /// </summary>
     public class BranchConfiguration
     {

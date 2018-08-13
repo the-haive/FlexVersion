@@ -1,4 +1,5 @@
 ﻿using System;
+using LibGit2Sharp;
 
 namespace IntelliSearch.GitSemVer
 {
@@ -36,5 +37,9 @@ namespace IntelliSearch.GitSemVer
         /// The sha is a unique commit identifier.
         /// </summary>
         public string Sha { get; internal set; }
+
+        public string FromBranchConfigName { get; set; }
+        public string ToBranchConfigName { get; set; }
+        public Tag Tag { get; set; }
     }
 }

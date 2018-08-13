@@ -2,7 +2,7 @@
   "profiles": {
     "IntelliSearch.GitSemVer.Console": {
       "commandName": "Project",
-      "commandLineArgs": ".\\gitsemver.yml D:\\src\\INTS\\ent"
+      "commandLineArgs": ".\\gitsemver.yml D:\\src\\INTS\\ent Configuration=Release"
     }
   }
 }

@@ -1,15 +1,20 @@
+# The configuration file si in YAML format: https://learnxinyminutes.com/docs/yaml/
+# It is suggested to learn the basics of YAML to be more confident on changing this file.
+# In addition to the more intuitive format of the file, it uses 'anchors' to reference 
+# values used elsewhere (defined with &VAR_NAME, and used with *VAR_NAME or <<: *VAR_NAME)
 
-# Configures how all branches are to behave. Must at minimum include a "*" definition that serves as the default for all branches.
+# Configures how all branches are to behave.
 Branches:
 
     # Default branch-definition, to be used by any branch that does not have their own definition and as a default for all other branches
-    '*': 
+    # Note: Using YAML backreference to define a default that is reused for later branches.
+    '*': &BRANCH_DEFAULT
         # Defines which version-sources to use, and their configuration.
         # It is very unlikely to need an override in other defined branches.
         VersionSource:
-            Enabled: # In priority order
-                - Tag
-                - Merge
+            Order: # In priority order. '?' in YAML defines a set.
+                ? Tag
+                ? Merge
 
             # Should probably always be True
             IterateFirstParentOnly: True
@@ -19,7 +24,7 @@ Branches:
 
             # Defines how to identify version-source merges.
             MergeMatch:
-                # NB! Must have the groups From and To defined somewhere in the pattern.
+                # NB! Must have the groups *From* and *To* defined somewhere in the pattern.
                 FromToPattern: 'Merged?\s+(?:(?:remote-tracking)|(?:branch)\s+)?(?<From>.+)\s+into\s+(?<To>.+).*'
                 FromTo:
                     # The keys and values must match the defined branches.
@@ -27,13 +32,13 @@ Branches:
                     Release: Support
                 # This pattern identifies Major, Minor, Patch and Label from the merge-message
                 # Test: https://regex101.com/r/ifaBAX/2/
-                MatchPattern: &VERSIONPATTERN 'v?(?<Major>\d+)\.(?<Minor>\d+)\.(?<Patch>\d+)(?:-(?<Label>[0-9A-Za-z-]+))?'
+                MatchPattern: &MATCH_PATTERN 'v?(?<Major>\d+)\.(?<Minor>\d+)\.(?<Patch>\d+)(?:-(?<Label>[0-9A-Za-z-]+))?'
 
             # This defines how a tag is identified as a version-source.
             # Note that tags can also be used as a fallback-solution. All branches must culminate in a version-source (either a merge or a tag). 
             # If not then add a tag "somewhere" in the branch-history.
             TagMatch: 
-                MatchPattern: *VERSIONPATTERN 
+                MatchPattern: *MATCH_PATTERN 
                 # Tags in git are annotated or lightweight. Some organizations may have policies on i.e. using annotated tags for important tags (like versioning).
                 AnnotatedTagsOnly: False 
 
@@ -46,30 +51,32 @@ Branches:
         # Default merge-action. A good default in order to get dev builds done right is to bump on every merge.
         OnMerge:
             '*': # Default for merge from any branch
-                VS_Commit_Count: '+1' # Pattern-matching: (?<operand>[+-=])(?<value>\d+)
+                VS_Commit_Count: '+1' # Pattern-matching: ^[+-=]\d+$
 
         # Formatting the three components (Version, PreRelease, Metadata)
-        # General:
-        # - BranchName
-        # - DateTimeNow
-        # - Env_* # Any specified environment variable.
-        # - Arg_* # Any argument passed in to analyze (dictionary of key value-pairs <string, string>)
+        # Common:
+        # - Common:BranchName
+        # - Common:ShortBranchName
+        # - Common:DateTimeNow
+        # - Env:* # Any specified environment variable.
+        # - Arg:* # Any argument passed in to analyze (dictionary of key value-pairs <string, string>)
         # Head commit properties
-        # - Head_Author
-        # - Head_CommitDate
-        # - Head_Sha 
-        # - Head_MessageShort
-        # - Head_Message
+        # - Head:Author
+        # - Head:CommitDate
+        # - Head:Sha 
+        # - Head:MessageShort
+        # - Head:Message
         # Version-Source properties
-        # - VS_Commit_Author 
-        # - VS_Commit_Count # Number of commits made after the version-source-commit.
-        # - VS_Commit_DateTime 
-        # - VS_Commit_Sha 
-        # - VS_Commit_MessageShort
-        # - VS_Commit_Message
-        # - VS_MessageShort # When VS is a branch this is the same a as the Commit_MessageShort. When VS is a tag, then this is the tag-name.
-        # - VS_Message # When VS is a branch this is the same a as the Commit_Message. When VS is a tag, then this is the tag-message (only for annotated tags).
-        # - VS_Match_* # The * denotes where you input the detected groups in the VersionPattern. I.e. VS_Match_Major.
+        # - VS:CommitAuthor 
+        # - VS:CommitCount # Number of commits made after the version-source-commit.
+        # - VS:CommitDateTime 
+        # - VS:CommitSha 
+        # - VS:CommitMessageShort
+        # - VS:CommitMessage
+        # - VS:MessageShort # When VS is a branch this is the same a as the Commit_MessageShort. When VS is a tag, then this is the tag-name.
+        # - VS:Message # When VS is a branch this is the same a as the Commit_Message. When VS is a tag, then this is the tag-message (only for annotated tags).
+        # Match (from tag or merge match)
+        # - Match:* # The * denotes where you input the detected groups in the VersionPattern. I.e. Match:Major.
         # You can control the generation using standard .Net string formatting (using interpolated values)
         Results:
             CleanOutput: &CLEAN_DEFAULT
@@ -77,21 +84,20 @@ Branches:
                 Replacement: '-' 
 
             Output: &OUTPUT_DEFAULT
-                Version: '{VS_Match_Major}.{VS_Match_Minor}.{VS_Match_Patch}'
+                Version: <Match:Major>.<Match:Minor>.<Match:Patch>
+                Length: Before$Length(<Version>)Middle$Length()After
 
-                ShortBranchName: '{(VS_Match_Branch).Substring((var i = VS_Match_Branch.IndexOf("/") > 0 ? i : 0), 8)}' # Helper for next line
+                #PreReleaseRaw: <Common:DateTimeNow>.<Common:ShortBranchName>
+                #MetadataRaw: configuration.<Arg:Configuration>.server.<Env:COMPUTERNAME>.branch.<Common:BranchName>.buildDate.<Common:DateTimeNow>.author.<Head:Author>.commitCount.<VS:CommitCount>'
 
-                PreReleaseRaw: '{DateTimeNow}.{ShortBranchName}'
-                MetadataRaw: 'configuration.{Arg_Configuration}.server.{Env_COMPUTERNAME}.branch.{BranchName}.buildDate.{DateTimeNow}.author.{Head_Author}.commitCount.{VS_Match_CommitCount}'
+                #PreRelease: '$IfNotEmpty(<PreReleaseRaw>, -<PreReleaseRaw>)' # IfNotEmpty is a helper defined in GitSemVer
+                #Metadata: '$IfNotEmpty(<MetadataRaw>, +<MetadataRaw>)'
 
-                PreRelease: '{IfNotEmpty(Result_PreReleaseRaw, "-{Result_PreReleaseRaw}")}' # IfNotEmpty is a helper defined in GitSemVer
-                Metadata: '{IfNotEmpty(Result_MetadataRaw, "+{Result_MetadataRaw}")}'
+                #SemVerPreRelease: '<Version><PreRelease><Metadata>' 
+                #SemVerRelease: '<Version><Metadata>'
 
-                SemVerPreRelease: '{Result_Version}{Result_PreRelease}{Result_Metadata}' 
-                SemVerRelease: '{Result_Version}{Result_Metadata}'
-
-                NuGetV2Release: '{Result_PreRelease}' # Not adding metadata to NuGet v2 as that is not supported
-                NuGetV2PreRelease: '{Result_PreRelease}{Result_PreRelease.Substring(0, 80 - Result_Version.Length}' # Version-string can be max 80 characters on NuGet v2, and skipping metadata
+                #NuGetV2Release: '<Version><PreRelease>' # Not adding metadata to NuGet v2 as that is not supported
+                #NuGetV2PreRelease: '<Version>$Substring(<PreRelease>, 0, 80 - $Length(<Release>))' # Version-string can be max 80 characters on NuGet v2, and skipping metadata
 
 
     # The below samples are for GitFlow, the way the GitSemVer author likes it. Please adapt to your needs.
@@ -103,6 +109,7 @@ Branches:
     # The branch has a prerelease-label, but for release builds the build-script should choose the release-version-tag. 
     # For 'debug'-builds the prerelease-version can still be useful, and the 'final' suggestion here will give it fairly high precedence (higher than 0dev, alpha and beta).
     Master:
+        <<: *BRANCH_DEFAULT
         Regex: master
         OnCommit: 
             VS_Match_Patch: '+1'
@@ -120,6 +127,7 @@ Branches:
 
     # The support branch is just the same as the master-branch. 
     Support:
+        <<: *BRANCH_DEFAULT
         OnCommit: 
             VS_Match_Patch: '+1'
         OnMerge:
@@ -141,6 +149,7 @@ Branches:
     # bugfixes may also be applied. Both the feature and the issue may and may not have it's own branch. In any cases it should bump on commits and 
     # on merges. Also, no merge will be considered as a version-source.
     Release:
+        <<: *BRANCH_DEFAULT
         Regex: 'release[/-]'
         Results:
             CleanOutput: 
@@ -156,6 +165,7 @@ Branches:
     # Merges are as default, BumpPre, too. 
     # The branch has no OnMerge that allows a version-source from a merge. Meaning that the version-source for this branch must be a tag.
     Develop:
+        <<: *BRANCH_DEFAULT
         Regex: develop
         Results:
             CleanOutput: 
@@ -168,9 +178,11 @@ Branches:
     # Feature and issue-branches are both considered 'development' state work. They have default behaviour for bumping commits and merges and only take 
     # version-source via tag. They (as well as unidentified branches) use the ShortDateTime as label and add the PreReleaseBranch to the pre-release-version.
     Feature:
+        <<: *BRANCH_DEFAULT
         Regex: '(feature|issue|.+-/d+)[/-]' # Also handle Jira-branches without feature or issue-prefix
 
     # Hotfix branches are branched off from master and support. 
     # Commits and merges within this branch should just BumpPre.
     Hotfix:
+        <<: *BRANCH_DEFAULT
         Regex: hotfix[/-]

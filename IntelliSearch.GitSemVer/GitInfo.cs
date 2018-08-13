@@ -14,12 +14,12 @@ namespace IntelliSearch.GitSemVer
         /// Creates a new GitInfo instance based on the provided params.
         /// </summary>
         /// <param name="repoPath"></param>
-        /// <param name="branch"></param>
+        /// <param name="branchName"></param>
         /// <param name="logToVersionSource"></param>
-        public GitInfo(string repoPath, string branch, List<Commit> logToVersionSource)
+        public GitInfo(string repoPath, string branchName, List<Commit> logToVersionSource)
         {
             Path = repoPath;
-            Branch = branch;
+            BranchName = branchName;
             LogToVersionSource = logToVersionSource;
         }
 
@@ -36,7 +36,7 @@ namespace IntelliSearch.GitSemVer
         /// <summary>
         /// Branchname
         /// </summary>
-        public string Branch { get; }
+        public string BranchName { get; }
 
         /// <summary>
         /// Commit date of last commit

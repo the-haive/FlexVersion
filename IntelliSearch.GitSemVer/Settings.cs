@@ -26,14 +26,9 @@ namespace IntelliSearch.GitSemVer
         /// <returns>The active branch-settings to be used.</returns>
         public BranchSettings For(string branchName, out string settingsBranchName)
         {
-            if (!Branches.Any())
+            if (!Branches.Any() || !Branches.ContainsKey("*"))
             {
-                throw new ArgumentException("There are no branch-settings defined. Branch-settings (including one for '*' is required.");
-            }
-
-            if (!Branches.ContainsKey("*"))
-            {
-                throw new ArgumentException("No default branch-setting is defined. Add a branch named '*'.");
+                throw new ArgumentException("No branch-settings defined, or missing the required '*' branch-definition.");
             }
 
             // Iterate all branches, except the default.

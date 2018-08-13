@@ -1,22 +1,21 @@
 ﻿using System.Collections.Generic;
-using IntelliSearch.GitSemVer.Configuration;
 
 namespace IntelliSearch.GitSemVer
 {
     /// <summary>
     /// Contains the results of the GitSemVer calculations.
     /// </summary>
-    public class Result
+    public class ResultOld
     {
         /// <summary>
         /// The configuration values in use for the detected branch
         /// </summary>
-        public KeyValuePair<string, BranchConfiguration> BranchConfiguration { get; internal set; }
+        public KeyValuePair<string, BranchSettings> BranchSettings { get; internal set; }
 
         /// <summary>
         /// Information on the detected version-source.
         /// </summary>
-        public VersionSource VersionSource { get; internal set; }
+        public VersionSource VersionSource { get; set; }
 
         /// <summary>
         /// Essential information about the git repo
@@ -26,7 +25,6 @@ namespace IntelliSearch.GitSemVer
         /// <summary>
         /// Versioning information
         /// </summary>
-        public Dictionary<string, string> Output { get; internal set; }
+        public VersionInfo VersionInfo { get; internal set; }
     }
-
 }

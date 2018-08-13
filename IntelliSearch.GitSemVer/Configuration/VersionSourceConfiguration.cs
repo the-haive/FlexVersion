@@ -10,7 +10,7 @@ namespace IntelliSearch.GitSemVer.Configuration
         /// <summary>
         /// List of version-sources to use in prioritized order.
         /// </summary>
-        public List<VersionSourceType> Enabled { get; set; }
+        public Dictionary<VersionSourceType, string> Order { get; set; }
 
         /// <summary>
         /// Whether or not to iterate all commits or only the first parent of a merge.

@@ -1,33 +1,36 @@
-grammar Output;     
- 
+grammar Output;
+
 start
-	:  (expr)* ; 
+  : expr* EOF
+  ;
 
-expr 
-	: expr expr 
-	| variable
-	| function
-	| text
-	;
-
-variable
-	: VAR
-	;
+expr
+ : function
+ //| expr ( MULT | DIV ) expr
+ //| expr ( PLUS | MINUS ) expr
+ | variable
+ | text
+ ;
 
 function
-	: FUNC '(' commaexpr ')' 
-	;
+ : FUNC '(' params ')';
 
-commaexpr
-	: WS? expr WS?
-	| commaexpr ',' commaexpr
-	;
+variable
+ : VAR;
 
-text: TEXT+ ;
- 
-FUNC: '$' ID ; 
-VAR : '<' ID '>' ;
-fragment ID : [a-zA-Z] | [a-zA-Z][a-zA-Z0-9:]+ ; 
-TEXT: .+?;
-NL : [\r\n]+ -> skip ; 
-WS: [ ]+ ;
+params
+ : expr+ ( ',' expr+ )*
+ ;
+
+text
+ : OTHER+
+ ;
+
+FUNC      : '$' ID;
+VAR       : '<' ID '>';
+OPEN_PAR  : '(';
+CLOSE_PAR : ')';
+COMMA     : ',';
+OTHER     : . ;
+
+fragment ID : [a-zA-Z] [a-zA-Z0-9:]* ;

@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
+using Antlr4.Runtime.Tree;
 
 namespace IntelliSearch.GitSemVer
 {
@@ -33,27 +37,69 @@ namespace IntelliSearch.GitSemVer
         public override string VisitFunction(global::OutputParser.FunctionContext context)
         {
             // TODO: Fix the return of , (to something that is easy to split on)
-            var result = VisitChildren(context);
-            var method = context.children[0].GetText().Substring(1); // Skip $
-            var args = context.children[2].GetText().Split(',');
+            var args = new List<string>();
+            var paramContext = ((IRuleNode)context.GetChild(2)).RuleContext; // 2nd index is always the params
+            var res = new StringBuilder();
+            for (var i = 0; i < paramContext.ChildCount; i++)
+            {
+                var child = paramContext.GetChild(i);
+                if (child.ChildCount == 0)
+                {
+                    args.Add(res.ToString());
+                    res.Clear();
+                    continue;
+                }
+                res.Append(VisitChildren(((IRuleNode) child).RuleContext));
+            }
+            if (res.Length > 0)
+            {
+                args.Add(res.ToString());
+            }
+
+            var method = context.children[0].GetText().Substring(1); // Skip the $ character
             switch (method.ToLowerInvariant())
             {
+                case "add":
+                    if (args.Count != 2) throw new ArgumentException("Error: The Add method takes 2 arguments.");
+                    if (!int.TryParse(args[0].Trim(), out var aa)) throw new ArgumentException("Error: The Add method's 1nd argument must be convertable to an integer.");
+                    if (!int.TryParse(args[1].Trim(), out var ab)) throw new ArgumentException("Error: The Add method's 2rd argument must be convertable to an integer.");
+                    return (aa+ab).ToString();
+
+                case "sub":
+                    if (args.Count != 2) throw new ArgumentException("Error: The Sub method takes 2 arguments.");
+                    if (!int.TryParse(args[0].Trim(), out var sa)) throw new ArgumentException("Error: The Sub method's 1nd argument must be convertable to an integer.");
+                    if (!int.TryParse(args[1].Trim(), out var sb)) throw new ArgumentException("Error: The Sub method's 2rd argument must be convertable to an integer.");
+                    return (sa - sb).ToString();
+
+                case "mul":
+                    if (args.Count != 2) throw new ArgumentException("Error: The Mul method takes 2 arguments.");
+                    if (!int.TryParse(args[0].Trim(), out var ma)) throw new ArgumentException("Error: The Mul method's 1nd argument must be convertable to an integer.");
+                    if (!int.TryParse(args[1].Trim(), out var mb)) throw new ArgumentException("Error: The Mul method's 2rd argument must be convertable to an integer.");
+                    return (ma * mb).ToString();
+
+                case "div":
+                    if (args.Count != 2) throw new ArgumentException("Error: The Mul method takes 2 arguments.");
+                    if (!int.TryParse(args[0].Trim(), out var da)) throw new ArgumentException("Error: The Div method's 1nd argument must be convertable to an integer.");
+                    if (!int.TryParse(args[1].Trim(), out var db)) throw new ArgumentException("Error: The Div method's 2rd argument must be convertable to an integer.");
+                    return (da / db).ToString();
+
                 case "length":
-                    if (args.Length != 1) throw new ArgumentException("Error: The Length method takes 1 argument.");
+                    if (args.Count != 1) throw new ArgumentException("Error: The Length method takes 1 argument.");
                     return args[0].Length.ToString();
 
                 case "substring":
-                    if (args.Length != 3) throw new ArgumentException("Error: The Substring method takes 3 arguments.");
-                    if (!int.TryParse(args[1], out var from)) throw new ArgumentException("Error: The Substring method's 2nd argument must be convertable to an integer.");
-                    if (!int.TryParse(args[2], out var to)) throw new ArgumentException("Error: The Substring method's 3rd argument must be convertable to an integer.");
+                    if (args.Count != 3) throw new ArgumentException("Error: The Substring method takes 3 arguments.");
+                    if (!int.TryParse(args[1].Trim(), out var from)) throw new ArgumentException("Error: The Substring method's 2nd argument must be convertable to an integer.");
+                    if (!int.TryParse(args[2].Trim(), out var to)) throw new ArgumentException("Error: The Substring method's 3rd argument must be convertable to an integer.");
+                    if (from + to > args[0].Length) to = args[0].Length - from;
                     return args[0].Substring(from, to);
 
                 case "ifnotempty":
-                    if (args.Length != 2) throw new ArgumentException("Error: The IfNotEmpty method takes 2 arguments.");
+                    if (args.Count != 2) throw new ArgumentException("Error: The IfNotEmpty method takes 2 arguments.");
                     return string.IsNullOrWhiteSpace(args[0]) ? string.Empty : args[1];
 
                 case "ifnotemptyelse":
-                    if (args.Length != 3) throw new ArgumentException("Error: The IfNotEmptyElse method takes 3 arguments.");
+                    if (args.Count != 3) throw new ArgumentException("Error: The IfNotEmptyElse method takes 3 arguments.");
                     return string.IsNullOrWhiteSpace(args[0]) ? args[2] : args[1];
 
                 default:

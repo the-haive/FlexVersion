@@ -44,23 +44,23 @@ public interface IOutputVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitExpr([NotNull] OutputParser.ExprContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="OutputParser.variable"/>.
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	/// <return>The visitor result.</return>
-	Result VisitVariable([NotNull] OutputParser.VariableContext context);
-	/// <summary>
 	/// Visit a parse tree produced by <see cref="OutputParser.function"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitFunction([NotNull] OutputParser.FunctionContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="OutputParser.commaexpr"/>.
+	/// Visit a parse tree produced by <see cref="OutputParser.variable"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	Result VisitCommaexpr([NotNull] OutputParser.CommaexprContext context);
+	Result VisitVariable([NotNull] OutputParser.VariableContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="OutputParser.params"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitParams([NotNull] OutputParser.ParamsContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="OutputParser.text"/>.
 	/// </summary>

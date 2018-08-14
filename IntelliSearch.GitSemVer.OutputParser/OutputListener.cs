@@ -51,16 +51,6 @@ public interface IOutputListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitExpr([NotNull] OutputParser.ExprContext context);
 	/// <summary>
-	/// Enter a parse tree produced by <see cref="OutputParser.variable"/>.
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	void EnterVariable([NotNull] OutputParser.VariableContext context);
-	/// <summary>
-	/// Exit a parse tree produced by <see cref="OutputParser.variable"/>.
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	void ExitVariable([NotNull] OutputParser.VariableContext context);
-	/// <summary>
 	/// Enter a parse tree produced by <see cref="OutputParser.function"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -71,15 +61,25 @@ public interface IOutputListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitFunction([NotNull] OutputParser.FunctionContext context);
 	/// <summary>
-	/// Enter a parse tree produced by <see cref="OutputParser.commaexpr"/>.
+	/// Enter a parse tree produced by <see cref="OutputParser.variable"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
-	void EnterCommaexpr([NotNull] OutputParser.CommaexprContext context);
+	void EnterVariable([NotNull] OutputParser.VariableContext context);
 	/// <summary>
-	/// Exit a parse tree produced by <see cref="OutputParser.commaexpr"/>.
+	/// Exit a parse tree produced by <see cref="OutputParser.variable"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
-	void ExitCommaexpr([NotNull] OutputParser.CommaexprContext context);
+	void ExitVariable([NotNull] OutputParser.VariableContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="OutputParser.params"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterParams([NotNull] OutputParser.ParamsContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="OutputParser.params"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitParams([NotNull] OutputParser.ParamsContext context);
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="OutputParser.text"/>.
 	/// </summary>

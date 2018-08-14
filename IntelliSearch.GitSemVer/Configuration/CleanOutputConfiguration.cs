@@ -10,9 +10,16 @@
         /// </summary>
         public string InvalidPattern { get; set; }
 
+        public string OutputMatch { get; set; }
+
         /// <summary>
         /// Defines what to be used as a replacement for the invalid matches.
         /// </summary>
         public string Replacement { get; set; }
+
+        public bool IsConfigured => 
+            !string.IsNullOrWhiteSpace(InvalidPattern) 
+            && !string.IsNullOrWhiteSpace(Replacement) 
+            && !string.IsNullOrWhiteSpace(OutputMatch);
     }
 }

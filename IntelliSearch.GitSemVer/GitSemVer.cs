@@ -9,11 +9,10 @@ using IntelliSearch.GitSemVer.Configuration;
 using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 using Parser = YamlDotNet.Core.Parser;
+// ReSharper disable InconsistentNaming
 
 namespace IntelliSearch.GitSemVer
 {
-    // https://regex101.com/r/ysJPjT/2/
-
     /// <summary>
     /// GitSemVer is a class that facilitates creating SemVer versions for your git repo, based on provided settings.
     /// </summary>
@@ -21,7 +20,7 @@ namespace IntelliSearch.GitSemVer
     {
         private readonly string _repoPath;
         private readonly GitSemVerConfiguration _gitSemVerConfiguration;
-        private readonly Dictionary<string, string> _arguments = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> _paramArgs = new Dictionary<string, string>();
 
         /// <summary>
         /// Initialize GitSemVer with repoPath and given configuration-object.
@@ -29,6 +28,7 @@ namespace IntelliSearch.GitSemVer
         /// </summary>
         /// <param name="gitSemVerConfiguration">The config-object to use.</param>
         /// <param name="repoPath">If null the current working directory is assumed.</param>
+        /// <param name="arguments">any string arguments that may be used when generating variables.</param>
         public GitSemVer(GitSemVerConfiguration gitSemVerConfiguration, string repoPath = null, params string[] arguments)
         {
             _repoPath = repoPath ?? Environment.CurrentDirectory;
@@ -38,7 +38,7 @@ namespace IntelliSearch.GitSemVer
                 var match = Regex.Match(argument, @"^(?<Variable>\w+)=(?<Value>\w+)$");
                 if (match.Success)
                 {
-                    _arguments.Add(match.Groups["Variable"].Value, match.Groups["Value"].Value);
+                    _paramArgs.Add(match.Groups["Variable"].Value, match.Groups["Value"].Value);
                 }
             }
         }
@@ -65,7 +65,7 @@ namespace IntelliSearch.GitSemVer
                 var match = Regex.Match(argument, @"^(?<Variable>\w+)=(?<Value>\w+)$");
                 if (match.Success)
                 {
-                    _arguments.Add(match.Groups["Variable"].Value, match.Groups["Value"].Value);
+                    _paramArgs.Add(match.Groups["Variable"].Value, match.Groups["Value"].Value);
                 }
             }
         }
@@ -78,16 +78,144 @@ namespace IntelliSearch.GitSemVer
         {
             var result = new Results();
 
-            // ReSharper disable once InconsistentNaming
-            var params_VS_Match_ = new Dictionary<string, string>();
-            var common = new Dictionary<string, string>(); // TODO: Add common values here
-            var head = new Dictionary<string, string>(); // TODO: Add head values here
-            var vs = new Dictionary<string, string>(); // TODO: Add VS values here
+            var paramMatch = new Dictionary<string, string>();
 
             var activeCommits = new List<Commit>();
 
-            BranchConfiguration branchConfig;
+            var branchConfig = FindVersionSource(result, paramMatch, activeCommits);
 
+            ExecuteActions(paramMatch, activeCommits, branchConfig);
+
+            GenerateOutputVariables(result, paramMatch, branchConfig);
+
+            return result;
+        }
+
+        private void GenerateOutputVariables(Results result, Dictionary<string, string> paramMatch, BranchConfiguration branchConfig)
+        {
+            // Handle output variables
+            var paramCommon = new Dictionary<string, string>();
+            var paramHead = new Dictionary<string, string>();
+            var paramVS = new Dictionary<string, string>();
+
+            var dateTimeFormat = branchConfig.Results.DateTimeFormat;
+
+            paramCommon.Add("BranchName", result.GitInfo.BranchName);
+            paramCommon.Add("ShortBranchName", result.GitInfo.BranchName.Split('/').Last());
+            paramCommon.Add("DateTimeNow", DateTime.Now.ToString(dateTimeFormat));
+
+            paramHead.Add("Author", result.GitInfo.LastAuthor);
+            paramHead.Add("Date", result.GitInfo.LastCommitDate.ToString(dateTimeFormat));
+            paramHead.Add("Sha", result.GitInfo.Head.Sha);
+            paramHead.Add("Message", result.GitInfo.Head.Message);
+            paramHead.Add("MessageShort", result.GitInfo.Head.MessageShort);
+
+            paramVS.Add("CommitAuthor", result.VersionSource.Commit.Author);
+            paramVS.Add("CommitDateTime", result.VersionSource.Commit.CommitDate.ToString(dateTimeFormat));
+            paramVS.Add("CommitSha", result.VersionSource.Commit.Sha);
+            paramVS.Add("CommitMessage", result.VersionSource.Commit.Message);
+            paramVS.Add("CommitMessageShort", result.VersionSource.Commit.MessageShort);
+            paramVS.Add("Message", result.VersionSource.Message);
+            paramVS.Add("MessageShort", result.VersionSource.MessageShort);
+
+            foreach (var output in branchConfig.Results.Output)
+            {
+                var inputStream = new AntlrInputStream(output.Value);
+                var lexer = new OutputLexer(inputStream);
+                var commonTokenStream = new CommonTokenStream(lexer);
+                var parser = new OutputParser(commonTokenStream);
+
+                parser.RemoveErrorListeners();
+                parser.AddErrorListener(new OutputErrorListener()); // add ours
+
+                var visitor = new OutputVisitor(_paramArgs, paramCommon, paramHead, paramMatch, result.Output, paramVS);
+                var parseOutput = visitor.Visit(parser.start());
+
+                // Clean output for given output keys.
+                if (branchConfig.Results.CleanOutput.IsConfigured)
+                {
+                    var outputMatch = Regex.Match(output.Key, branchConfig.Results.CleanOutput.OutputMatch,
+                                                    RegexOptions.Compiled | RegexOptions.CultureInvariant |
+                                                    RegexOptions.IgnoreCase);
+                    if (outputMatch.Success)
+                    {
+                        var regex = new Regex(branchConfig.Results.CleanOutput?.InvalidPattern,
+                                              RegexOptions.Compiled | RegexOptions.CultureInvariant |
+                                              RegexOptions.IgnoreCase);
+                        parseOutput = regex.Replace(parseOutput, branchConfig.Results.CleanOutput.Replacement);
+                    }
+                }
+
+                result.Output.Add(output.Key, parseOutput);
+            }
+
+        }
+
+        private static void ExecuteActions(Dictionary<string, string> paramMatch_, List<Commit> activeCommits, BranchConfiguration branchConfig)
+        {
+            // Find actions by iterating from oldest and to newest, executing actions per commit as we go along.
+            // The oldest item is the version-source, and should not execute any actions.
+            Dictionary<string, string> actions = null;
+            for (var i = activeCommits.Count() - 2; i >= 0; i--)
+            {
+                var c = activeCommits[i];
+
+                if (c.IsMerge)
+                {
+                    // Find OnMerge actions
+                    // if OnMerge.Key has entry that matches this merge's from (or fallback *) then add actions
+                    actions = branchConfig.OnMerge.ContainsKey(c.FromBranchConfigName)
+                        ? branchConfig.OnMerge[c.FromBranchConfigName].ToDictionary(a => a.Key, a => a.Value)
+                        : (
+                            branchConfig.OnMerge.ContainsKey("*")
+                                ? branchConfig.OnMerge["*"].ToDictionary(a => a.Key, a => a.Value)
+                                : null
+                        );
+                }
+                else
+                {
+                    if (branchConfig.OnCommit.Any())
+                    {
+                        // Add any OnCommit actions
+                        actions = branchConfig.OnCommit.ToDictionary(a => a.Key, a => a.Value);
+                    }
+                }
+
+                if (actions == null) continue;
+
+                // Execute commit-actions
+                foreach (var action in actions)
+                {
+                    // Match the actions
+                    var match = Regex.Match(action.Value, @"^(?<Op>[+-=])(?<Value>\d+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        var op = match.Groups["Op"].Value;
+                        var value = match.Groups["Value"].Value;
+                        if (op == "=")
+                        {
+                            paramMatch_[action.Key] = value;
+                        }
+                        else
+                        {
+                            var temp = 0;
+                            if (paramMatch_.ContainsKey(action.Key)) temp = int.Parse(paramMatch_[action.Key]);
+                            temp = temp + int.Parse(match.Value);
+                            paramMatch_[action.Key] = temp.ToString();
+                        }
+                    }
+                    else
+                    {
+                        throw new ArgumentException(
+                            "The merge-action was not understood. Should match '<[+-=]><number>'.");
+                    }
+                }
+            }
+        }
+
+        private BranchConfiguration FindVersionSource(Results result, Dictionary<string, string> paramMatch_, List<Commit> activeCommits)
+        {
+            BranchConfiguration branchConfig;
             using (var repo = new Repository(_repoPath))
             {
                 var branchName = repo.Branches.First(b => b.IsCurrentRepositoryHead).FriendlyName;
@@ -112,7 +240,7 @@ namespace IntelliSearch.GitSemVer
                         var match = regex.Match(tag.FriendlyName);
 
                         if (!match.Success) continue;
-                        
+
                         // Was match. Lets get the matches.
                         var matchParts = new Dictionary<string, string>();
                         var groupNames = regex.GetGroupNames().Where(i => i != "0");
@@ -170,7 +298,7 @@ namespace IntelliSearch.GitSemVer
 
                             foreach (var matchPart in tagCandidates[c.Sha].matchParts)
                             {
-                                params_VS_Match_.Add(matchPart.Key, matchPart.Value);
+                                paramMatch_.Add(matchPart.Key, matchPart.Value);
                             }
                             versionSource = VersionSourceType.Tag;
                         }
@@ -206,7 +334,7 @@ namespace IntelliSearch.GitSemVer
                                 var matchParts = regex.GetGroupNames().ToDictionary(groupName => groupName, groupName => match.Groups[groupName].Value);
                                 foreach (var matchPart in matchParts)
                                 {
-                                    params_VS_Match_.Add(matchPart.Key, matchPart.Value);
+                                    paramMatch_.Add(matchPart.Key, matchPart.Value);
                                 }
 
                                 versionSource = VersionSourceType.Merge;
@@ -219,172 +347,13 @@ namespace IntelliSearch.GitSemVer
                     if (versionSource == VersionSourceType.None) continue;
 
                     // This commit is the version-source. We should add partial results break.
-                    result.VersionSource = new VersionSource(commit, versionSource, params_VS_Match_);
+                    result.VersionSource = new VersionSource(commit, versionSource, paramMatch_);
                     result.GitInfo = new GitInfo(_repoPath, branchName, activeCommits);
                     break;
                 }
             }
 
-            // Find actions by iterating from oldest and to newest, executing actions per commit as we go along.
-            // The oldest item is the version-source, and should not execute any actions.
-            Dictionary<string, string> actions = null;
-            for (var i = activeCommits.Count() - 2; i >= 0; i--)
-            {
-                var c = activeCommits[i];
-
-                if (c.IsMerge)
-                {
-                    // Find OnMerge actions
-                    // if OnMerge.Key has entry that matches this merge's from (or fallback *) then add actions
-                    actions = branchConfig.OnMerge.ContainsKey(c.FromBranchConfigName)
-                        ? branchConfig.OnMerge[c.FromBranchConfigName].ToDictionary(a => a.Key, a => a.Value)
-                        : (
-                            branchConfig.OnMerge.ContainsKey("*")
-                                ? branchConfig.OnMerge["*"].ToDictionary(a => a.Key, a => a.Value)
-                                : null
-                        );
-                }
-                else
-                {
-                    if (branchConfig.OnCommit.Any())
-                    {
-                        // Add any OnCommit actions
-                        actions = branchConfig.OnCommit.ToDictionary(a => a.Key, a => a.Value);
-                    }
-                }
-
-                if (actions == null) continue;
-
-                // Execute commit-actions
-                foreach (var action in actions)
-                {
-                    // Match the actions
-                    var match = Regex.Match(action.Value, @"^(?<Op>[+-=])(?<Value>\d+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-                    if (match.Success)
-                    {
-                        var op = match.Groups["Op"].Value;
-                        var value = match.Groups["Value"].Value;
-                        if (op == "=")
-                        {
-                            params_VS_Match_[action.Key] = value;
-                        }
-                        else
-                        {
-                            var temp = 0;
-                            if (params_VS_Match_.ContainsKey(action.Key)) temp = int.Parse(params_VS_Match_[action.Key]);
-                            temp = temp + int.Parse(match.Value);
-                            params_VS_Match_[action.Key] = temp.ToString();
-                        }
-                    }
-                    else
-                    {
-                        throw new ArgumentException(
-                            "The merge-action was not understood. Should match '<[+-=]><number>'.");
-                    }
-                }
-            }
-
-
-            // TODO: Handle Output generation.
-
-            //var BranchName = result.GitInfo.BranchName;
-            //var DateTimeNow = DateTime.Now.ToString("YYMMDD-HHmmss");
-
-            var helperCommands = new List<string>{"IfNotEmpty", "SubString", "Length" };
-
-            foreach (var output in branchConfig.Results.Output)
-            {
-                var inputStream = new AntlrInputStream(output.Value);
-                var lexer = new OutputLexer(inputStream);
-                var commonTokenStream = new CommonTokenStream(lexer);
-                var parser = new OutputParser(commonTokenStream);
-
-                parser.RemoveErrorListeners();
-                parser.AddErrorListener(new OutputErrorListener()); // add ours
-
-                var visitor = new OutputVisitor(_arguments, common, head, params_VS_Match_, result.Output, vs);
-
-                result.Output.Add(output.Key, visitor.Visit(parser.start()));
-
-
-                //var resValue = output.Value;
-
-                //// Do typed variable expansion
-                //foreach (Match match in Regex.Matches(resValue, @"<(?<Type>\w+):(?<Var>.+?)>"))
-                //{
-                //    var type = match.Groups["Type"].Value;
-                //    var var = match.Groups["Var"].Value;
-                //    string temp;
-                //    switch (type)
-                //    {
-                //        case "Match":
-                //            temp = params_VS_Match_.ContainsKey(var) ? params_VS_Match_[var] : $"['{var}' not found]";
-                //            resValue = resValue.Replace(match.Value, temp);
-                //            break;
-                //        case "Env":
-                //            temp = Environment.GetEnvironmentVariable(match.Groups["Var"].Value);
-                //            if (string.IsNullOrWhiteSpace(temp)) temp = $"['{var}' not found]";
-                //            resValue = resValue.Replace(match.Value, temp);
-                //            break;
-                //        case "Arg":
-                //            temp = _arguments.ContainsKey(var) ? _arguments[match.Groups["Var"].Value] : $"['{var}' not found]";
-                //            resValue = resValue.Replace(match.Value, temp);
-                //            break;
-                //        case "VS":
-                //            temp = $"['{type}' not implemented]";
-                //            resValue = resValue.Replace(match.Value, temp);
-                //            break;
-                //        case "Common":
-                //            temp = $"['{type}' not implemented]";
-                //            resValue = resValue.Replace(match.Value, temp);
-                //            break;
-                //        case "Head":
-                //            temp = $"['{type}' not implemented]";
-                //            resValue = resValue.Replace(match.Value, temp);
-                //            break;
-                //    }
-                //}
-
-                //// Replace references to other so far generated output-vars.
-                //foreach (Match match in Regex.Matches(resValue, @"<(?<Var>.+?)>"))
-                //{
-                //    var var = match.Groups["Var"].Value;
-                //    var temp = outputParams.ContainsKey(var) ? outputParams[match.Groups["Var"].Value] : $"['{var}' not found]";
-                //    resValue = resValue.Replace(match.Value, temp);
-                //}
-
-                //outputParams.Add(output.Key, resValue);
-            }
-
-            //// First replace all variables with values
-
-            //    // Do all VS_Match_ replacements
-            //    foreach (Match match in Regex.Matches(output.Value, @"(<VS_Match_(?<Var>.+?\b)>)"))
-            //    {
-            //        var key = match.Groups["Var"].Value;
-            //        var value = params_VS_Match_.ContainsKey(key) ? params_VS_Match_[key] : "<NA>";
-            //        resValue = resValue.Replace(match.Value, value);
-            //    }
-
-            //    // Do all Env_ replacements
-            //    foreach (Match match in Regex.Matches(output.Value, @"(<Env_(?<Var>.+?\b)>)"))
-            //    {
-            //        var value = Environment.GetEnvironmentVariable(match.Groups["Var"].Value);
-            //        resValue = resValue.Replace(match.Value, value);
-            //    }
-
-            //    // Do all Arg_ replacements
-            //    foreach (Match match in Regex.Matches(output.Value, @"(<Arg_(?<Var>.+?\b)>)"))
-            //    {
-            //        var key = match.Groups["Var"].Value;
-            //        var value = _arguments.ContainsKey(key) ? _arguments[match.Groups["Var"].Value] : "<NA>";
-            //        resValue = resValue.Replace(match.Value, value);
-            //    }
-
-
-            //result.Output = outputParams;
-
-            return result;
+            return branchConfig;
         }
 
         private void FindBranchFromTo(string fromBranchName, string toBranchName, out string from, out string to)

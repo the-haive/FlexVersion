@@ -46,12 +46,12 @@ Branches:
         # The value to bump must be a numeric value.
         # Note that for sem-ver, bumping minor means that patch must be set to 0, and bumping major means that both minor and patch must be zeroed.
         OnCommit:
-            VS_Commit_Count: '+1' # Pattern-matching: (?<operand>[+-=])(?<value>\d+)
+            CommitCount: '+1' # Pattern-matching: (?<operand>[+-=])(?<value>\d+)
 
         # Default merge-action. A good default in order to get dev builds done right is to bump on every merge.
         OnMerge:
             '*': # Default for merge from any branch
-                VS_Commit_Count: '+1' # Pattern-matching: ^[+-=]\d+$
+                CommitCount: '+1' # Pattern-matching: ^[+-=]\d+$
 
         # Formatting the three components (Version, PreRelease, Metadata)
         # Common:
@@ -62,13 +62,12 @@ Branches:
         # - Arg:* # Any argument passed in to analyze (dictionary of key value-pairs <string, string>)
         # Head commit properties
         # - Head:Author
-        # - Head:CommitDate
+        # - Head:Date
         # - Head:Sha 
         # - Head:MessageShort
         # - Head:Message
         # Version-Source properties
         # - VS:CommitAuthor 
-        # - VS:CommitCount # Number of commits made after the version-source-commit.
         # - VS:CommitDateTime 
         # - VS:CommitSha 
         # - VS:CommitMessageShort
@@ -76,29 +75,31 @@ Branches:
         # - VS:MessageShort # When VS is a branch this is the same a as the Commit_MessageShort. When VS is a tag, then this is the tag-name.
         # - VS:Message # When VS is a branch this is the same a as the Commit_Message. When VS is a tag, then this is the tag-message (only for annotated tags).
         # Match (from tag or merge match)
-        # - Match:* # The * denotes where you input the detected groups in the VersionPattern. I.e. Match:Major.
+        # - Match:* # The * denotes where you input the detected groups in the VersionPattern. I.e. Match:Major. 
+        #   NB! The default example uses CommitCount, for OnCommit and OnMerge.
         # You can control the generation using standard .Net string formatting (using interpolated values)
-        Results:
-            CleanOutput: &CLEAN_DEFAULT
-                InvalidPattern: '[^0-9A-Za-z-]+' # These are the character that are invalid in SemVer (the ^ negates the character class)
-                Replacement: '-' 
+        Results: &RESULTS_DEFAULT
+            DateTimeFormat: yyMMdd-HHmmss
 
             Output: &OUTPUT_DEFAULT
                 Version: <Match:Major>.<Match:Minor>.<Match:Patch>
-                Length: $Length(<Version>,2,3)
 
-                #PreReleaseRaw: <Common:DateTimeNow>.<Common:ShortBranchName>
-                #MetadataRaw: configuration.<Arg:Configuration>.server.<Env:COMPUTERNAME>.branch.<Common:BranchName>.buildDate.<Common:DateTimeNow>.author.<Head:Author>.commitCount.<VS:CommitCount>
+                PreReleaseRaw: <Common:DateTimeNow>.<Common:ShortBranchName>
+                MetadataRaw: configuration.<Arg:Configuration>.server.<Env:COMPUTERNAME>.branch.<Common:BranchName>.buildDate.<Common:DateTimeNow>.author.<Head:Author>.commitCount.<Match:CommitCount>
 
-                #PreRelease: $IfNotEmpty(<PreReleaseRaw>, -<PreReleaseRaw>) # IfNotEmpty is a helper defined in GitSemVer
-                #Metadata: $IfNotEmpty(<MetadataRaw>, +<MetadataRaw>)
+                PreRelease: $IfNotEmpty(<PreReleaseRaw>,-<PreReleaseRaw>) # Append with -, if it has value
+                Metadata: $IfNotEmpty(<MetadataRaw>,+<MetadataRaw>) # Append with +, if it has value
 
-                #SemVerPreRelease: <Version><PreRelease><Metadata> 
-                #SemVerRelease: <Version><Metadata>
+                SemVer: <Version><PreRelease><Metadata>
 
-                #NuGetV2Release: <Version><PreRelease> # Not adding metadata to NuGet v2 as that is not supported
-                #NuGetV2PreRelease: <Version>$Substring(<PreRelease>, 0, 80 - $Length(<Release>)) # Version-string can be max 80 characters on NuGet v2, and skipping metadata
+                NuGetV2: $Substring(<Version><PreRelease>,0,80) # Max 80 chars long
 
+            CleanOutput: 
+                InvalidPattern: '[^0-9A-Za-z-]+' # These are the character that are invalid in SemVer (the ^ negates the character class)
+                Replacement: '-' 
+                OutputMatch: PreReleaseRaw|MetadataRaw
+
+                    
 
     # The below samples are for GitFlow, the way the GitSemVer author likes it. Please adapt to your needs.
   
@@ -112,35 +113,33 @@ Branches:
         <<: *BRANCH_DEFAULT
         Regex: master
         OnCommit: 
-            VS_Match_Patch: '+1'
+            Patch: '+1'
         OnMerge:
             Hotfix: 
-                VS_Match_Patch: '+1'
+                Patch: '+1'
         Results:
-            CleanOutput: 
-                <<: *CLEAN_DEFAULT
+            <<: *RESULTS_DEFAULT
             Output:
-                Label: '{IfEmpty(VS_Match_Label, "qa" )}'
+                Label: '$IfEmpty(<Match:Label>,qa)'
                 <<: *OUTPUT_DEFAULT
                 # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
-                PreReleaseRaw: '{Result_Label}.{VS_Match_CommitCount}'
+                PreReleaseRaw: '<Label>.<Match:CommitCount>'
 
     # The support branch is just the same as the master-branch. 
     Support:
         <<: *BRANCH_DEFAULT
         OnCommit: 
-            VS_Match_Patch: '+1'
+            Patch: '+1'
         OnMerge:
             Hotfix: 
-                VS_Match_Patch: '+1'
+                Patch: '+1'
         Results:
-            CleanOutput: 
-                <<: *CLEAN_DEFAULT
+            <<: *RESULTS_DEFAULT
             Output:
-                Label: '{IfEmpty(VS_Match_Label, "qa" )}'
+                Label: '$IfEmpty(<Match:Label>,qa)'
                 <<: *OUTPUT_DEFAULT
                 # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
-                PreReleaseRaw: '{Result_Label}.{VS_Match_CommitCount}'
+                PreReleaseRaw: '<Label>.<Match:CommitCount>'
 
     # Release-branches are branched off from develop- or support-branches. 
     # If branched from develop they merge back to develop, and when the stabilizing is complete it is also merged to master (the release-branch is then deleted).
@@ -152,12 +151,11 @@ Branches:
         <<: *BRANCH_DEFAULT
         Regex: 'release[/-]'
         Results:
-            CleanOutput: 
-                <<: *CLEAN_DEFAULT
+            <<: *RESULTS_DEFAULT
             Output:
-                Label: '{IfEmpty(VS_Match_Label, "beta" )}'
+                Label: '$IfEmpty(<Match:Label>,beta)'
                 <<: *OUTPUT_DEFAULT
-                PreReleaseRaw: '{Result_Label}.{VS_Match_CommitCount}'
+                PreReleaseRaw: '<Label>.<Match:CommitCount>'
 
     # Develop is the "next-version" branch. Ideally it is merged off from master. For older repos with history this might not always be the case. But, when the master is 
     # updated by a release-branch they will be in sync eventually anyway. 
@@ -168,12 +166,11 @@ Branches:
         <<: *BRANCH_DEFAULT
         Regex: develop
         Results:
-            CleanOutput: 
-                <<: *CLEAN_DEFAULT
+            <<: *RESULTS_DEFAULT
             Output:
-                Label: '{IfEmpty(VS_Match_Label, "alpha" )}'
+                Label: '$IfEmpty(<Match:Label>,alpha)'
                 <<: *OUTPUT_DEFAULT
-                PreReleaseRaw: '{Result_Label}.{VS_Match_CommitCount}'
+                PreReleaseRaw: '<Label>.<Match:CommitCount>'
 
     # Feature and issue-branches are both considered 'development' state work. They have default behaviour for bumping commits and merges and only take 
     # version-source via tag. They (as well as unidentified branches) use the ShortDateTime as label and add the PreReleaseBranch to the pre-release-version.

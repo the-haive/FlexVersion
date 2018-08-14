@@ -7,6 +7,7 @@ namespace IntelliSearch.GitSemVer.Configuration
     /// </summary>
     public class ResultsConfiguration
     {
+        public string DateTimeFormat { get; set; }
         /// <summary>
         /// Used to clean the result output strings.
         /// </summary>

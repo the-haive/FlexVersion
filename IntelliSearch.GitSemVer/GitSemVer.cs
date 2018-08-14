@@ -164,13 +164,13 @@ namespace IntelliSearch.GitSemVer
                 {
                     // Find OnMerge actions
                     // if OnMerge.Key has entry that matches this merge's from (or fallback *) then add actions
-                    actions = branchConfig.OnMerge.ContainsKey(c.FromBranchConfigName)
-                        ? branchConfig.OnMerge[c.FromBranchConfigName].ToDictionary(a => a.Key, a => a.Value)
-                        : (
-                            branchConfig.OnMerge.ContainsKey("*")
-                                ? branchConfig.OnMerge["*"].ToDictionary(a => a.Key, a => a.Value)
-                                : null
-                        );
+                    if (!string.IsNullOrWhiteSpace(c.FromBranchConfigName) 
+                        && branchConfig.OnMerge.ContainsKey(c.FromBranchConfigName))
+                        actions = branchConfig.OnMerge[c.FromBranchConfigName].ToDictionary(a => a.Key, a => a.Value);
+                    else
+                        actions = branchConfig.OnMerge.ContainsKey("*")
+                                      ? branchConfig.OnMerge["*"].ToDictionary(a => a.Key, a => a.Value)
+                                      : null;
                 }
                 else
                 {
@@ -309,7 +309,7 @@ namespace IntelliSearch.GitSemVer
                             // Based on merge-message, what branch is the source?
                             var fromBranchName = string.Empty;
                             var toBranchName = string.Empty;
-                            var fromBranchMatch = Regex.Match(c.Message, branchConfig.VersionSource.MergeMatch.MatchPattern);
+                            var fromBranchMatch = Regex.Match(c.Message, branchConfig.VersionSource.MergeMatch.FromToPattern);
                             if (fromBranchMatch.Success)
                             {
                                 fromBranchName = fromBranchMatch.Groups["From"].Value;

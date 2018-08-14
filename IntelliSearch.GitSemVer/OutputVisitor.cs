@@ -87,6 +87,12 @@ namespace IntelliSearch.GitSemVer
                     if (args.Count != 1) throw new ArgumentException("Error: The Length method takes 1 argument.");
                     return args[0].Length.ToString();
 
+                case "padleft":
+                    if (args.Count != 3) throw new ArgumentException("Error: The PadLeft method takes 3 arguments.");
+                    if (!int.TryParse(args[1].Trim(), out var totalWidth)) throw new ArgumentException("Error: The PadLeft method's 2nd argument must be convertable to an integer.");
+                    if (args[2].Length != 1) throw new ArgumentException("Error: The PadLeft method's 3rd argument must be a single character.");
+                    return args[0].PadLeft(totalWidth, args[2][0]);
+
                 case "substring":
                     if (args.Count != 3) throw new ArgumentException("Error: The Substring method takes 3 arguments.");
                     if (!int.TryParse(args[1].Trim(), out var from)) throw new ArgumentException("Error: The Substring method's 2nd argument must be convertable to an integer.");
@@ -94,13 +100,29 @@ namespace IntelliSearch.GitSemVer
                     if (from + to > args[0].Length) to = args[0].Length - from;
                     return args[0].Substring(from, to);
 
+                case "replaceifempty":
+                    if (args.Count != 2) throw new ArgumentException("Error: The ReplaceIfEmpty method takes 2 arguments.");
+                    return string.IsNullOrWhiteSpace(args[0]) ? args[1] : args[0];
+
+                case "ifempty":
+                    if (args.Count != 2) throw new ArgumentException("Error: The IfEmpty method takes 2 arguments.");
+                    return string.IsNullOrWhiteSpace(args[0]) ? args[1] : string.Empty;
+
+                case "replaceifnotempty":
+                    if (args.Count != 2) throw new ArgumentException("Error: The ReplaceIfNotEmpty method takes 2 arguments.");
+                    return !string.IsNullOrWhiteSpace(args[0]) ? args[1] : args[0];
+
                 case "ifnotempty":
                     if (args.Count != 2) throw new ArgumentException("Error: The IfNotEmpty method takes 2 arguments.");
-                    return string.IsNullOrWhiteSpace(args[0]) ? string.Empty : args[1];
+                    return !string.IsNullOrWhiteSpace(args[0]) ? args[1] : string.Empty;
+
+                case "ifemptyelse":
+                    if (args.Count != 3) throw new ArgumentException("Error: The IfEmptyElse method takes 3 arguments.");
+                    return string.IsNullOrWhiteSpace(args[0]) ? args[1] : args[2];
 
                 case "ifnotemptyelse":
                     if (args.Count != 3) throw new ArgumentException("Error: The IfNotEmptyElse method takes 3 arguments.");
-                    return string.IsNullOrWhiteSpace(args[0]) ? args[2] : args[1];
+                    return !string.IsNullOrWhiteSpace(args[0]) ? args[1] : args[2];
 
                 default:
                     throw new ArgumentException($"Error: Unknown method '{method}'.");

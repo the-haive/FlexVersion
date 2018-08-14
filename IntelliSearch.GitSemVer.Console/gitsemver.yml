@@ -95,7 +95,7 @@ Branches:
                 NuGetV2: $Substring(<Version><PreRelease>,0,80) # Max 80 chars long
 
             CleanOutput: 
-                InvalidPattern: '[^0-9A-Za-z-]+' # These are the character that are invalid in SemVer (the ^ negates the character class)
+                InvalidPattern: '[^0-9A-Za-z-.]+' # These are the character that are invalid in SemVer (the ^ negates the character class)
                 Replacement: '-' 
                 OutputMatch: PreReleaseRaw|MetadataRaw
 
@@ -120,7 +120,8 @@ Branches:
         Results:
             <<: *RESULTS_DEFAULT
             Output:
-                Label: '$IfEmpty(<Match:Label>,qa)'
+                Label: '$ReplaceIfEmpty(<Match:Label>,qa)'
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
                 <<: *OUTPUT_DEFAULT
                 # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
                 PreReleaseRaw: '<Label>.<Match:CommitCount>'
@@ -128,6 +129,7 @@ Branches:
     # The support branch is just the same as the master-branch. 
     Support:
         <<: *BRANCH_DEFAULT
+        Regex: 'support[/-]'
         OnCommit: 
             Patch: '+1'
         OnMerge:
@@ -136,7 +138,8 @@ Branches:
         Results:
             <<: *RESULTS_DEFAULT
             Output:
-                Label: '$IfEmpty(<Match:Label>,qa)'
+                Label: '$ReplaceIfEmpty(<Match:Label>,qa)'
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
                 <<: *OUTPUT_DEFAULT
                 # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
                 PreReleaseRaw: '<Label>.<Match:CommitCount>'
@@ -153,7 +156,8 @@ Branches:
         Results:
             <<: *RESULTS_DEFAULT
             Output:
-                Label: '$IfEmpty(<Match:Label>,beta)'
+                Label: '$ReplaceIfEmpty(<Match:Label>,beta)'
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
                 <<: *OUTPUT_DEFAULT
                 PreReleaseRaw: '<Label>.<Match:CommitCount>'
 
@@ -168,7 +172,8 @@ Branches:
         Results:
             <<: *RESULTS_DEFAULT
             Output:
-                Label: '$IfEmpty(<Match:Label>,alpha)'
+                Label: '$ReplaceIfEmpty(<Match:Label>,alpha)'
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
                 <<: *OUTPUT_DEFAULT
                 PreReleaseRaw: '<Label>.<Match:CommitCount>'
 
@@ -177,9 +182,19 @@ Branches:
     Feature:
         <<: *BRANCH_DEFAULT
         Regex: '(feature|issue|.+-/d+)[/-]' # Also handle Jira-branches without feature or issue-prefix
+        Results:
+            <<: *RESULTS_DEFAULT
+            Output:
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
+                <<: *OUTPUT_DEFAULT
 
     # Hotfix branches are branched off from master and support. 
     # Commits and merges within this branch should just BumpPre.
     Hotfix:
         <<: *BRANCH_DEFAULT
         Regex: hotfix[/-]
+        Results:
+            <<: *RESULTS_DEFAULT
+            Output:
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
+                <<: *OUTPUT_DEFAULT

@@ -17,7 +17,7 @@
         /// </summary>
         public string Replacement { get; set; }
 
-        public bool IsConfigured => 
+        internal bool IsConfigured => 
             !string.IsNullOrWhiteSpace(InvalidPattern) 
             && !string.IsNullOrWhiteSpace(Replacement) 
             && !string.IsNullOrWhiteSpace(OutputMatch);

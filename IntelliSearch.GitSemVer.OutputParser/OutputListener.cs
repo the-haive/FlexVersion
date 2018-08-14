@@ -51,6 +51,26 @@ public interface IOutputListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitExpr([NotNull] OutputParser.ExprContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="OutputParser.variable"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterVariable([NotNull] OutputParser.VariableContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="OutputParser.variable"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitVariable([NotNull] OutputParser.VariableContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="OutputParser.function"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterFunction([NotNull] OutputParser.FunctionContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="OutputParser.function"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitFunction([NotNull] OutputParser.FunctionContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="OutputParser.commaexpr"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

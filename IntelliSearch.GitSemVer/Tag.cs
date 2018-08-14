@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace IntelliSearch.GitSemVer
+﻿namespace IntelliSearch.GitSemVer
 {
     public class Tag
     {

@@ -5,11 +5,35 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="OutputBaseListener.class" />
+    <None Remove="OutputBaseListener.java" />
+    <None Remove="OutputBaseVisitor.class" />
+    <None Remove="OutputBaseVisitor.java" />
+    <None Remove="OutputLexer.class" />
+    <None Remove="OutputLexer.java" />
+    <None Remove="OutputListener.class" />
+    <None Remove="OutputListener.java" />
+    <None Remove="OutputParser%24CommaexprContext.class" />
+    <None Remove="OutputParser%24ExprContext.class" />
+    <None Remove="OutputParser%24FunctionContext.class" />
+    <None Remove="OutputParser%24StartContext.class" />
+    <None Remove="OutputParser%24TextContext.class" />
+    <None Remove="OutputParser%24VariableContext.class" />
+    <None Remove="OutputParser.class" />
+    <None Remove="OutputParser.java" />
+    <None Remove="OutputVisitor.class" />
+    <None Remove="OutputVisitor.java" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Antlr4.Runtime.Standard" Version="4.7.1.1" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="OutputLexer.g4">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="OutputParser2.g4">
       <Generator>MSBuild:Compile</Generator>
     </None>
   </ItemGroup>

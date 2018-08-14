@@ -6,7 +6,7 @@ namespace IntelliSearch.GitSemVer
     /// <summary>
     /// Contains the results of the GitSemVer calculations.
     /// </summary>
-    public class Result
+    public class Results
     {
         /// <summary>
         /// The configuration values in use for the detected branch
@@ -26,7 +26,7 @@ namespace IntelliSearch.GitSemVer
         /// <summary>
         /// Versioning information
         /// </summary>
-        public Dictionary<string, string> Output { get; internal set; }
+        public Dictionary<string, string> Output { get; internal set; } = new Dictionary<string, string>();
     }
 
 }

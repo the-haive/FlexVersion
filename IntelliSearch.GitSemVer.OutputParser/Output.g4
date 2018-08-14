@@ -5,10 +5,18 @@ start
 
 expr 
 	: expr expr 
-	| VAR 
-	| FUNC '(' commaexpr ')' 
+	| variable
+	| function
 	| text
-	; 
+	;
+
+variable
+	: VAR
+	;
+
+function
+	: FUNC '(' commaexpr ')' 
+	;
 
 commaexpr
 	: WS? expr WS?

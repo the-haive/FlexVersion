@@ -85,19 +85,19 @@ Branches:
 
             Output: &OUTPUT_DEFAULT
                 Version: <Match:Major>.<Match:Minor>.<Match:Patch>
-                Length: Before$Length(<Version>)Middle$Length()After
+                Length: $Length(<Version>,2,3)
 
                 #PreReleaseRaw: <Common:DateTimeNow>.<Common:ShortBranchName>
-                #MetadataRaw: configuration.<Arg:Configuration>.server.<Env:COMPUTERNAME>.branch.<Common:BranchName>.buildDate.<Common:DateTimeNow>.author.<Head:Author>.commitCount.<VS:CommitCount>'
+                #MetadataRaw: configuration.<Arg:Configuration>.server.<Env:COMPUTERNAME>.branch.<Common:BranchName>.buildDate.<Common:DateTimeNow>.author.<Head:Author>.commitCount.<VS:CommitCount>
 
-                #PreRelease: '$IfNotEmpty(<PreReleaseRaw>, -<PreReleaseRaw>)' # IfNotEmpty is a helper defined in GitSemVer
-                #Metadata: '$IfNotEmpty(<MetadataRaw>, +<MetadataRaw>)'
+                #PreRelease: $IfNotEmpty(<PreReleaseRaw>, -<PreReleaseRaw>) # IfNotEmpty is a helper defined in GitSemVer
+                #Metadata: $IfNotEmpty(<MetadataRaw>, +<MetadataRaw>)
 
-                #SemVerPreRelease: '<Version><PreRelease><Metadata>' 
-                #SemVerRelease: '<Version><Metadata>'
+                #SemVerPreRelease: <Version><PreRelease><Metadata> 
+                #SemVerRelease: <Version><Metadata>
 
-                #NuGetV2Release: '<Version><PreRelease>' # Not adding metadata to NuGet v2 as that is not supported
-                #NuGetV2PreRelease: '<Version>$Substring(<PreRelease>, 0, 80 - $Length(<Release>))' # Version-string can be max 80 characters on NuGet v2, and skipping metadata
+                #NuGetV2Release: <Version><PreRelease> # Not adding metadata to NuGet v2 as that is not supported
+                #NuGetV2PreRelease: <Version>$Substring(<PreRelease>, 0, 80 - $Length(<Release>)) # Version-string can be max 80 characters on NuGet v2, and skipping metadata
 
 
     # The below samples are for GitFlow, the way the GitSemVer author likes it. Please adapt to your needs.

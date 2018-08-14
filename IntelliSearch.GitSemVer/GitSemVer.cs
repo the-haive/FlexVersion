@@ -1,13 +1,14 @@
 ﻿using LibGit2Sharp;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Antlr4.Runtime;
 using IntelliSearch.GitSemVer.Configuration;
 using YamlDotNet.Core;
 using YamlDotNet.Serialization;
+using Parser = YamlDotNet.Core.Parser;
 
 namespace IntelliSearch.GitSemVer
 {
@@ -20,7 +21,7 @@ namespace IntelliSearch.GitSemVer
     {
         private readonly string _repoPath;
         private readonly GitSemVerConfiguration _gitSemVerConfiguration;
-        private Dictionary<string, string> _arguments = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> _arguments = new Dictionary<string, string>();
 
         /// <summary>
         /// Initialize GitSemVer with repoPath and given configuration-object.
@@ -73,12 +74,15 @@ namespace IntelliSearch.GitSemVer
         /// Analyzes the branch using the configuration given to identify versioning information as well as providing some git repo information.
         /// </summary>
         /// <returns>A result object with various GitSemVer-relevant versioning information.</returns>
-        public Result Analyze()
+        public Results Analyze()
         {
-            var result = new Result();
+            var result = new Results();
 
             // ReSharper disable once InconsistentNaming
             var params_VS_Match_ = new Dictionary<string, string>();
+            var common = new Dictionary<string, string>(); // TODO: Add common values here
+            var head = new Dictionary<string, string>(); // TODO: Add head values here
+            var vs = new Dictionary<string, string>(); // TODO: Add VS values here
 
             var activeCommits = new List<Commit>();
 
@@ -286,103 +290,70 @@ namespace IntelliSearch.GitSemVer
             //var BranchName = result.GitInfo.BranchName;
             //var DateTimeNow = DateTime.Now.ToString("YYMMDD-HHmmss");
 
-            List<string> helperCommands = new List<string>{"IfNotEmpty", "SubString", "Length" };
+            var helperCommands = new List<string>{"IfNotEmpty", "SubString", "Length" };
 
-            var outputParams = new Dictionary<string, string>();
             foreach (var output in branchConfig.Results.Output)
             {
-                var resValue = output.Value;
+                var inputStream = new AntlrInputStream(output.Value);
+                var lexer = new OutputLexer(inputStream);
+                var commonTokenStream = new CommonTokenStream(lexer);
+                var parser = new OutputParser(commonTokenStream);
 
-                // Do typed variable expansion
-                foreach (Match match in Regex.Matches(resValue, @"<(?<Type>\w+):(?<Var>.+?)>"))
-                {
-                    var type = match.Groups["Type"].Value;
-                    var var = match.Groups["Var"].Value;
-                    string temp;
-                    switch (type)
-                    {
-                        case "Match":
-                            temp = params_VS_Match_.ContainsKey(var) ? params_VS_Match_[var] : $"['{var}' not found]";
-                            resValue = resValue.Replace(match.Value, temp);
-                            break;
-                        case "Env":
-                            temp = Environment.GetEnvironmentVariable(match.Groups["Var"].Value);
-                            if (string.IsNullOrWhiteSpace(temp)) temp = $"['{var}' not found]";
-                            resValue = resValue.Replace(match.Value, temp);
-                            break;
-                        case "Arg":
-                            temp = _arguments.ContainsKey(var) ? _arguments[match.Groups["Var"].Value] : $"['{var}' not found]";
-                            resValue = resValue.Replace(match.Value, temp);
-                            break;
-                        case "VS":
-                            temp = $"['{type}' not implemented]";
-                            resValue = resValue.Replace(match.Value, temp);
-                            break;
-                        case "Common":
-                            temp = $"['{type}' not implemented]";
-                            resValue = resValue.Replace(match.Value, temp);
-                            break;
-                        case "Head":
-                            temp = $"['{type}' not implemented]";
-                            resValue = resValue.Replace(match.Value, temp);
-                            break;
-                    }
-                }
+                parser.RemoveErrorListeners();
+                parser.AddErrorListener(new OutputErrorListener()); // add ours
 
-                // Replace references to other so far generated output-vars.
-                foreach (Match match in Regex.Matches(resValue, @"<(?<Var>.+?)>"))
-                {
-                    var var = match.Groups["Var"].Value;
-                    var temp = outputParams.ContainsKey(var) ? outputParams[match.Groups["Var"].Value] : $"['{var}' not found]";
-                    resValue = resValue.Replace(match.Value, temp);
-                }
+                var visitor = new OutputVisitor(_arguments, common, head, params_VS_Match_, result.Output, vs);
 
-                // TODO: Do functions
-                string FindFunction(string data)
-                {
-                    // First find if there are at least one function in there 
-                    var match = Regex.Match(data, @"\$\w+\(.*\)");
-                    if (!match.Success) return data;
+                result.Output.Add(output.Key, visitor.Visit(parser.start()));
 
-                    // Find outermost parenthesis
-                    var 
 
-                        var func = match.Groups["Func"].Value;
-                        var args = match.Groups["Args"].Value;
+                //var resValue = output.Value;
 
-                        // Check if there are more functions called within
-                        var res = FindFunction(args);
-                        if (res != args)
-                        {
-                            data = data.Replace(args, res);
-                        }
+                //// Do typed variable expansion
+                //foreach (Match match in Regex.Matches(resValue, @"<(?<Type>\w+):(?<Var>.+?)>"))
+                //{
+                //    var type = match.Groups["Type"].Value;
+                //    var var = match.Groups["Var"].Value;
+                //    string temp;
+                //    switch (type)
+                //    {
+                //        case "Match":
+                //            temp = params_VS_Match_.ContainsKey(var) ? params_VS_Match_[var] : $"['{var}' not found]";
+                //            resValue = resValue.Replace(match.Value, temp);
+                //            break;
+                //        case "Env":
+                //            temp = Environment.GetEnvironmentVariable(match.Groups["Var"].Value);
+                //            if (string.IsNullOrWhiteSpace(temp)) temp = $"['{var}' not found]";
+                //            resValue = resValue.Replace(match.Value, temp);
+                //            break;
+                //        case "Arg":
+                //            temp = _arguments.ContainsKey(var) ? _arguments[match.Groups["Var"].Value] : $"['{var}' not found]";
+                //            resValue = resValue.Replace(match.Value, temp);
+                //            break;
+                //        case "VS":
+                //            temp = $"['{type}' not implemented]";
+                //            resValue = resValue.Replace(match.Value, temp);
+                //            break;
+                //        case "Common":
+                //            temp = $"['{type}' not implemented]";
+                //            resValue = resValue.Replace(match.Value, temp);
+                //            break;
+                //        case "Head":
+                //            temp = $"['{type}' not implemented]";
+                //            resValue = resValue.Replace(match.Value, temp);
+                //            break;
+                //    }
+                //}
 
-                        string temp;
-                        switch (func)
-                        {
-                            case "$Length":
-                                temp = args.Length.ToString();
-                                data = data.Replace(match.Value, temp);
-                                break;
-                            case "$IfNotEmpty":
-                                data = data.Replace(match.Value, $"[{func}({args}) not implemented]");
-                                break;
-                            case "$Substring":
-                                data = data.Replace(match.Value, $"[{func}({args}) not implemented]");
-                                break;
-                            default:
-                                data = data.Replace(match.Value, $"[{func}({args}) is unknown]");
-                                break;
-                        }
+                //// Replace references to other so far generated output-vars.
+                //foreach (Match match in Regex.Matches(resValue, @"<(?<Var>.+?)>"))
+                //{
+                //    var var = match.Groups["Var"].Value;
+                //    var temp = outputParams.ContainsKey(var) ? outputParams[match.Groups["Var"].Value] : $"['{var}' not found]";
+                //    resValue = resValue.Replace(match.Value, temp);
+                //}
 
-                    }
-                    return data;
-                }
-
-                resValue = FindFunction(resValue);
-
-                outputParams.Add(output.Key, resValue);
-
+                //outputParams.Add(output.Key, resValue);
             }
 
             //// First replace all variables with values
@@ -411,7 +382,7 @@ namespace IntelliSearch.GitSemVer
             //    }
 
 
-            result.Output = outputParams;
+            //result.Output = outputParams;
 
             return result;
         }

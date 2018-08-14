@@ -59,6 +59,30 @@ public partial class OutputBaseListener : IOutputListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitExpr([NotNull] OutputParser.ExprContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="OutputParser.variable"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterVariable([NotNull] OutputParser.VariableContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="OutputParser.variable"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitVariable([NotNull] OutputParser.VariableContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="OutputParser.function"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterFunction([NotNull] OutputParser.FunctionContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="OutputParser.function"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitFunction([NotNull] OutputParser.FunctionContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="OutputParser.commaexpr"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>

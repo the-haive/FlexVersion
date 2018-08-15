@@ -1,0 +1,55 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2047
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IntelliSearch.FlexVersion", "IntelliSearch.FlexVersion\IntelliSearch.FlexVersion.csproj", "{E4BA3CC1-8E03-411E-874D-F32A6C57E524}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IntelliSearch.FlexVersionTests", "IntelliSearch.FlexVersionTests\IntelliSearch.FlexVersionTests.csproj", "{1EE098DC-8C46-44FF-A2DD-878D25DAAA93}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IntelliSearch.FlexVersion.Console", "IntelliSearch.FlexVersion.Console\IntelliSearch.FlexVersion.Console.csproj", "{3D963E9E-C32D-4F4C-A4B0-4A264C32FA9C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0E1626FE-50B3-4317-B9C3-BA72C1834389}"
+	ProjectSection(SolutionItems) = preProject
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cake.FlexVersion", "Cake.FlexVersion\Cake.FlexVersion.csproj", "{F2BF2A21-DF4D-4ECC-AB27-9F0F794C015B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntelliSearch.FlexVersion.OutputParser", "IntelliSearch.FlexVersion.OutputParser\IntelliSearch.FlexVersion.OutputParser.csproj", "{A08AF2EB-438B-467C-B34D-1F43B633FC7C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E4BA3CC1-8E03-411E-874D-F32A6C57E524}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E4BA3CC1-8E03-411E-874D-F32A6C57E524}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E4BA3CC1-8E03-411E-874D-F32A6C57E524}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E4BA3CC1-8E03-411E-874D-F32A6C57E524}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1EE098DC-8C46-44FF-A2DD-878D25DAAA93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1EE098DC-8C46-44FF-A2DD-878D25DAAA93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1EE098DC-8C46-44FF-A2DD-878D25DAAA93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1EE098DC-8C46-44FF-A2DD-878D25DAAA93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D963E9E-C32D-4F4C-A4B0-4A264C32FA9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D963E9E-C32D-4F4C-A4B0-4A264C32FA9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D963E9E-C32D-4F4C-A4B0-4A264C32FA9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D963E9E-C32D-4F4C-A4B0-4A264C32FA9C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2BF2A21-DF4D-4ECC-AB27-9F0F794C015B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2BF2A21-DF4D-4ECC-AB27-9F0F794C015B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2BF2A21-DF4D-4ECC-AB27-9F0F794C015B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2BF2A21-DF4D-4ECC-AB27-9F0F794C015B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A08AF2EB-438B-467C-B34D-1F43B633FC7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A08AF2EB-438B-467C-B34D-1F43B633FC7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A08AF2EB-438B-467C-B34D-1F43B633FC7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A08AF2EB-438B-467C-B34D-1F43B633FC7C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1B9FAC43-7F21-478C-B485-98618D30EBCB}
+	EndGlobalSection
+EndGlobal

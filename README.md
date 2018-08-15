@@ -1,17 +1,36 @@
-# GitSemVer
-Calculates SemVer version based on information from the git-repo (commits, merges and tags) as well as your GitSemVer configuration.
+# FlexVersion
 
-This library/tool uses the git repo as a source for calculating which SemVer version your project is currently at. It is inspired by GitVersion, but uses a different algorithm and solution to find versioning information. See at the bottom for reasons I did this instead of using GitVersion.
+This library/tool makes it easy to calculate very flexible version-strings (++) based on the repository commits and tags.
 
 ## Concepts
-A central concept is the **version-source**. The version-source can be a tag, a merge or a fallback value. Each commit (or merge-commit) after the version-source can (depending on your settings bump the major, minor, patch or pre-count of the version.
 
-Another central part is that this system allows for a **prerelease-count** to be automatically calculated. The idea is that each commit in the repo, will have an identifyable **pre-release** version, by adding a label and a pre-count as sem-ver prerelease information. Thus, this allows you to push pre-release packages to your nuGet feed too, without overwriting a previous package.
+* Version Source
 
-The console app uses a **configuration file** for controlling the setup. It is very flexible and simple to use. You can control how each branch behaves in a simple and intuitive manner.
+  The version source is the commit that identifies the repo in regards to the state it is in. The tag name or the merge commit message can contain identifiers that help identify this, like i.e. 1.0.0-beta.12. The typical (and default config) use case is that tags and merges with that message will be used as a version-source. 
+
+* Actions
+
+  When a version-source has been identified, the commits are played from oldest to newest and for each message the configuration allows you to perform increments (or decrements) on any of the detected parts from the version-source. Or you can create new parts that are counted. For instance, the default config adds "CommitCount", and then increments this on each commit/merge.
+
+* Output
+
+  At the end you usually want to create various output strings. These can be freely setup using any text, the above parts from the version-source, various other variables and functions.
+
+* Very flexible configration
+
+  No configuration options are default, they are all provided in the flexversion.yml file.
+  The configuration system has all configuration options in separate branches, but all branches by default are setup to inherit from it. If you don't want to inherit then you can manipulate which parts you want to copy and not.
+  The configuration file is written in YAML, which makes it very human friendly, and also host a lot of options for reusing config sections within the config-file.
+
+## Console app
+
+The FlexVersion.exe (TODO) allows you to run this in a console. It can take additional input parameters to control which confguration-file to use, which repo to connect to and additional variables that you want to pass to the generated output strings. Run with help as option to see the usage.
+
+Since the console project is created using .Net Core it can run on Linux, Mac and Windows [full specification](https://github.com/dotnet/core/blob/master/release-notes/2.0/2.0-supported-os.md).
 
 ## Library
-The project core library, GitSemVer is implemented to target .NetStandard 2.0. This library can be used as a dll in your .Net project. This means that it can be used by a any .Net implementation that supports .Net Standard 2.0. At the time of writing this:
+
+The project core library, IntelliSearch.FlexVersion targets .NetStandard 2.0. This library can be used as a dll in your .Net project. This means that it can be used by a any .Net implementation that supports .Net Standard 2.0. At the time of writing this:
 
 * .Net Core 2.0+
 * .Net Framework 4.6.1+
@@ -23,78 +42,33 @@ The project core library, GitSemVer is implemented to target .NetStandard 2.0. T
 
 Ref: [.NET Standard Implementation support](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 
-## Console app
-There is also an executable that allows you to run this in a console, and which outputs the results in a JSON format. 
+## Getting started
 
-Since the console project is created using .Net Core it can run on Linux, Mac and Windows [full specification](https://github.com/dotnet/core/blob/master/release-notes/2.0/2.0-supported-os.md).
+At the moment you will have to clone the project, build it and then use the assemblies created. It is planned however to make this available on NuGet, Chocolatey and as a Cake addin.
 
-The console app is "bare-bones" in its current set-up (i.e. no help for instance - yet). 
+## Configuration
 
-It optionally takes two parameters:
-* The path to the settings-file (.\gitsemver.yml if omitted)
-* The path to the repo (current directory if omitted)
+The settings-file is formatted via YAML and all configuration is added as items in the **Branches** section. The `"*"` entry is special, as this is the configuration that is used when a branch has no specific matches.
 
-The console app itself doesn't really have to take many options as all configuration should be done in the settings-file.
+The suggested strategy (as used in the default config-file) is to add an entry per branch-type you use. I.e. master, support, release, feature, hotfix etc. The branches that has not been specified will use the `"*"` branch as fallback.
 
-## Settings
-The settings-file is formatted via YAML. 
+Have a look at the [default configuration-file](IntelliSearch.FlexVersion.Console/flexversion.yml) to get more details on the options available. It may look daunting at first sight, but it is fairly well documented and most of it are defaults that you may not want to change anyway.
 
-Here is a sample (very loosely geared towards the GitFlow pattern):
-```yaml
-Branches:
-  # This is used as a default. Any branch that does not match the defined branch-regexes will use this.
-  # Also, any defined branch will use these values as a starting point and will override only values defined.
-  "*": 
-    # This means that it follows the first parent for merges when iterating. This prevents pollution from other branches.
-    IterateFirstParentOnly: True 
-    MaxCommitsToAnalyze: -1 # In the unlikely event that analyzing takes too long, restrict the number of commits to iterate. 
-    MergeSourceBranchPattern: Merged?\s+(?>(?>remote-tracking)|(?>branch)\s+)?(?<from>.+)\s+into\s+.* # How the 'from'-branch is detected via regex. 
-    TagPattern: ^v?(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+).*$ # Only tags that matches are considered (has major, minor and patch)
-    AnnotatedTagsOnly: False # Tags in git are annotated or lightweight.
-    OnCommit: BumpPre # Bump pre-count on every commit after version-source.
-    OnMerge:
-      "*": None # Default merge action is nothing.
-    Label: 0.wip # Default label
-  Master:
-    Regex: master
-    OnCommit: BumpPatch # Every commit on master should bump the patch number.
-    OnMerge:
-      Release: BumpMajor # Every merge from the release-branch to master should bump master (this may not be what you want, for illustration purposes only)
-      Feature: BumpMinor # Every merge from feature-branch to master should bump minor.
-      Hotfix: BumpPatch # Every merge from hotfix to master should bump the patch-number.
-    Label: # No label for the master releases
-  Support:
-    Regex: support[/-] 
-    OnCommit: BumpPatch
-    OnMerge:
-      Release: BumpMajor
-      Feature: BumpMinor
-      Hotfix: BumpPatch
-    Label:
-  Release:
-    Regex: release[/-]
-    Label: beta
-  Develop:
-    Regex: develop
-    Label: alpha
-  Feature:
-    Regex: (feature|issue|.+-/d+)[/-] # Also handle Jira-branches without feature or issue-prefix
-  Hotfix:
-    Regex: hotfix[/-]
-```
+## Roadmap
 
-## TODO
-* Use GitSemVer on GitSemVer to set version, yay!
 * Set up CI  build and push to NuGet
-* Implement Cake addin
+* Complete Cake addin
 * Handle pre-release label overrides via tag (and branch?). Specifically handy for release-candidates in GitFlow where the `beta` label is to be replaced with i.e. `RC` or `RC1`.
 * Write tests.
 
 ## Disclaimer
-This project is in its early days (alpha state), and although it "works for me" it might not "work for you". Use at your own risk. If you find any issues or have any suggestions plese create an issue on the issue page. Or, if you want to contribute then that is super-cool too :).
+
+This project is in beta state, and although it "works for me" it might not "work for you". If you find any issues or have any suggestions plese create an issue on the issue page. Or, if you want to contribute then that is super-cool too :).
 
 ## Why not just use GitVersion?
+
 I did this project instead of GitVersion because:
+
 * I could not get GitVersion to play the way I wanted it to.
 * Response on the project was slow.
 * It seems to be buggy for both the 3.x stable version as well as the 4.x beta. The CommitsSinceVersionSource counter seems to not do what I would have thought that it did.
@@ -106,6 +80,7 @@ I did this project instead of GitVersion because:
 Now, all the issues I was having could be me doing something wrong in the configuration. While looking into things I got my own idea on how to approach this and that is what triggered this project.
 
 ## License
+
 Copyright (c) 2018 IntelliSearch Software AS.
 
-GitSemVer is provided as-is under the MIT license. For more information see LICENSE.
+FlexVersion is provided as-is under the MIT license. For more information see LICENSE.

@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "IntelliSearch.GitSemVer.Console": {
-      "commandName": "Project",
-      "commandLineArgs": "-c .\\gitsemver.yml -r c:\\src\\ent\\ -v Configuration=Release Server=BAMBOO"
-    }
-  }
-}

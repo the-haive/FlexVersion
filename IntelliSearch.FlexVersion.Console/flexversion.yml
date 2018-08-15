@@ -1,0 +1,200 @@
+# The configuration file si in YAML format: https://learnxinyminutes.com/docs/yaml/
+# It is suggested to learn the basics of YAML to be more confident on changing this file.
+# In addition to the more intuitive format of the file, it uses 'anchors' to reference 
+# values used elsewhere (defined with &VAR_NAME, and used with *VAR_NAME or <<: *VAR_NAME)
+
+# Configures how all branches are to behave.
+Branches:
+
+    # Default branch-definition, to be used by any branch that does not have their own definition and as a default for all other branches
+    # Note: Using YAML backreference to define a default that is reused for later branches.
+    '*': &BRANCH_DEFAULT
+        # Defines which version-sources to use, and their configuration.
+        # It is very unlikely to need an override in other defined branches.
+        VersionSource:
+            Order: # In priority order. '?' in YAML defines a set.
+                ? Tag
+                ? Merge
+
+            # Should probably always be True
+            IterateFirstParentOnly: True
+
+            # Only change if it really gets slow. Even then it is probably better to add a tag...
+            MaxCommitsToAnalyze: -1
+
+            # Defines how to identify version-source merges.
+            MergeMatch:
+                # NB! Must have the groups *From* and *To* defined somewhere in the pattern.
+                FromToPattern: 'Merged?\s+(?:(?:remote-tracking)|(?:branch)\s+)?(?<From>.+)\s+into\s+(?<To>.+).*'
+                FromTo:
+                    # The keys and values must match the defined branches.
+                    Release: Master 
+                    Release: Support
+                # This pattern identifies Major, Minor, Patch and Label from the merge-message
+                # Test: https://regex101.com/r/ifaBAX/2/
+                MatchPattern: &MATCH_PATTERN 'v?(?<Major>\d+)\.(?<Minor>\d+)\.(?<Patch>\d+)(?:-(?<Label>[0-9A-Za-z-]+))?'
+
+            # This defines how a tag is identified as a version-source.
+            # Note that tags can also be used as a fallback-solution. All branches must culminate in a version-source (either a merge or a tag). 
+            # If not then add a tag "somewhere" in the branch-history.
+            TagMatch: 
+                MatchPattern: *MATCH_PATTERN 
+                # Tags in git are annotated or lightweight. Some organizations may have policies on i.e. using annotated tags for important tags (like versioning).
+                AnnotatedTagsOnly: False 
+
+        # Default commit-action. A good default in order to get dev builds done right is to bump on every commit.
+        # The value to bump must be a numeric value.
+        # Note that for sem-ver, bumping minor means that patch must be set to 0, and bumping major means that both minor and patch must be zeroed.
+        OnCommit:
+            CommitCount: '+1' # Pattern-matching: (?<operand>[+-=])(?<value>\d+)
+
+        # Default merge-action. A good default in order to get dev builds done right is to bump on every merge.
+        OnMerge:
+            '*': # Default for merge from any branch
+                CommitCount: '+1' # Pattern-matching: ^[+-=]\d+$
+
+        # Formatting the three components (Version, PreRelease, Metadata)
+        # Common:
+        # - Common:BranchName
+        # - Common:ShortBranchName
+        # - Common:DateTimeNow
+        # - Env:* # Any specified environment variable.
+        # - Arg:* # Any argument passed in to analyze (dictionary of key value-pairs <string, string>)
+        # Head commit properties
+        # - Head:Author
+        # - Head:Date
+        # - Head:Sha 
+        # - Head:MessageShort
+        # - Head:Message
+        # Version-Source properties
+        # - VS:CommitAuthor 
+        # - VS:CommitDateTime 
+        # - VS:CommitSha 
+        # - VS:CommitMessageShort
+        # - VS:CommitMessage
+        # - VS:MessageShort # When VS is a branch this is the same a as the Commit_MessageShort. When VS is a tag, then this is the tag-name.
+        # - VS:Message # When VS is a branch this is the same a as the Commit_Message. When VS is a tag, then this is the tag-message (only for annotated tags).
+        # Match (from tag or merge match)
+        # - Match:* # The * denotes where you input the detected groups in the VersionPattern. I.e. Match:Major. 
+        #   NB! The default example uses CommitCount, for OnCommit and OnMerge.
+        # You can control the generation using standard .Net string formatting (using interpolated values)
+        Results: &RESULTS_DEFAULT
+            DateTimeFormat: yyMMdd-HHmmss
+
+            Output: &OUTPUT_DEFAULT
+                Version: <Match:Major>.<Match:Minor>.<Match:Patch>
+
+                PreReleaseRaw: <Common:DateTimeNow>.<Common:ShortBranchName>
+                MetadataRaw: configuration.<Arg:Configuration>.server.<Env:COMPUTERNAME>.branch.<Common:BranchName>.buildDate.<Common:DateTimeNow>.author.<Head:Author>.commitCount.<Match:CommitCount>
+
+                PreRelease: $IfNotEmpty(<PreReleaseRaw>,-<PreReleaseRaw>) # Append with -, if it has value
+                Metadata: $IfNotEmpty(<MetadataRaw>,+<MetadataRaw>) # Append with +, if it has value
+
+                SemVer: <Version><PreRelease><Metadata>
+
+                NuGetV2: $Substring(<Version><PreRelease>,0,80) # Max 80 chars long
+
+            CleanOutput: 
+                InvalidPattern: '[^0-9A-Za-z-.]+' # These are the character that are invalid in SemVer (the ^ negates the character class)
+                Replacement: '-' 
+                OutputMatch: PreReleaseRaw|MetadataRaw
+
+                    
+
+    # The below samples are for GitFlow, the way the FlexVersion author likes it. Please adapt to your needs.
+  
+    # The master branch is considered a stable branch.
+    # If something is merged from a release-branch then it is considered a version-source and it will use the version referred to in the branch.
+    # If something is merged from a hotfix-branch then we should bump the Patch.
+    # We also want each commit to bump the Patch.
+    # The branch has a prerelease-label, but for release builds the build-script should choose the release-version-tag. 
+    # For 'debug'-builds the prerelease-version can still be useful, and the 'final' suggestion here will give it fairly high precedence (higher than 0dev, alpha and beta).
+    Master:
+        <<: *BRANCH_DEFAULT
+        Regex: master
+        OnCommit: 
+            Patch: '+1'
+        OnMerge:
+            Hotfix: 
+                Patch: '+1'
+        Results:
+            <<: *RESULTS_DEFAULT
+            Output:
+                Label: '$ReplaceIfEmpty(<Match:Label>,qa)'
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
+                <<: *OUTPUT_DEFAULT
+                # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
+                PreReleaseRaw: '<Label>.<Match:CommitCount>'
+
+    # The support branch is just the same as the master-branch. 
+    Support:
+        <<: *BRANCH_DEFAULT
+        Regex: 'support[/-]'
+        OnCommit: 
+            Patch: '+1'
+        OnMerge:
+            Hotfix: 
+                Patch: '+1'
+        Results:
+            <<: *RESULTS_DEFAULT
+            Output:
+                Label: '$ReplaceIfEmpty(<Match:Label>,qa)'
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
+                <<: *OUTPUT_DEFAULT
+                # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
+                PreReleaseRaw: '<Label>.<Match:CommitCount>'
+
+    # Release-branches are branched off from develop- or support-branches. 
+    # If branched from develop they merge back to develop, and when the stabilizing is complete it is also merged to master (the release-branch is then deleted).
+    # If branched from support they merge back to support, but only when the stabilizing is complete (the release-branch is then deleted).
+    # release-branches are about stabilizing (as they are supposed to be feature-complete). But, sometimes a feature was forgotten and needs to be added. Also, 
+    # bugfixes may also be applied. Both the feature and the issue may and may not have it's own branch. In any cases it should bump on commits and 
+    # on merges. Also, no merge will be considered as a version-source.
+    Release:
+        <<: *BRANCH_DEFAULT
+        Regex: 'release[/-]'
+        Results:
+            <<: *RESULTS_DEFAULT
+            Output:
+                Label: '$ReplaceIfEmpty(<Match:Label>,beta)'
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
+                <<: *OUTPUT_DEFAULT
+                PreReleaseRaw: '<Label>.<Match:CommitCount>'
+
+    # Develop is the "next-version" branch. Ideally it is merged off from master. For older repos with history this might not always be the case. But, when the master is 
+    # updated by a release-branch they will be in sync eventually anyway. 
+    # The develop branch may have work done right on the branch, in which case it should BumPre (which is default already from "*"). 
+    # Merges are as default, BumpPre, too. 
+    # The branch has no OnMerge that allows a version-source from a merge. Meaning that the version-source for this branch must be a tag.
+    Develop:
+        <<: *BRANCH_DEFAULT
+        Regex: develop
+        Results:
+            <<: *RESULTS_DEFAULT
+            Output:
+                Label: '$ReplaceIfEmpty(<Match:Label>,alpha)'
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
+                <<: *OUTPUT_DEFAULT
+                PreReleaseRaw: '<Label>.<Match:CommitCount>'
+
+    # Feature and issue-branches are both considered 'development' state work. They have default behaviour for bumping commits and merges and only take 
+    # version-source via tag. They (as well as unidentified branches) use the ShortDateTime as label and add the PreReleaseBranch to the pre-release-version.
+    Feature:
+        <<: *BRANCH_DEFAULT
+        Regex: '(feature|issue|.+-/d+)[/-]' # Also handle Jira-branches without feature or issue-prefix
+        Results:
+            <<: *RESULTS_DEFAULT
+            Output:
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
+                <<: *OUTPUT_DEFAULT
+
+    # Hotfix branches are branched off from master and support. 
+    # Commits and merges within this branch should just BumpPre.
+    Hotfix:
+        <<: *BRANCH_DEFAULT
+        Regex: hotfix[/-]
+        Results:
+            <<: *RESULTS_DEFAULT
+            Output:
+                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
+                <<: *OUTPUT_DEFAULT

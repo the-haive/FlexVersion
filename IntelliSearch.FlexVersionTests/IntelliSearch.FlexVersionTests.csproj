@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-    <AssemblyName>IntelliSearch.GitSemVerTests</AssemblyName>
-    <RootNamespace>IntelliSearch.GitSemVerTests</RootNamespace>
+    <AssemblyName>IntelliSearch.FlexVersionTests</AssemblyName>
+    <RootNamespace>IntelliSearch.FlexVersionTests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

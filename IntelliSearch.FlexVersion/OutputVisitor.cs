@@ -1,31 +1,41 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Data;
+
 using Antlr4.Runtime.Tree;
+
+using IntelliSearch.FlexVersion.Logging;
 
 namespace IntelliSearch.FlexVersion
 {
     internal class OutputVisitor : OutputBaseVisitor<string>
     {
+        private static readonly ILog Logger = LogProvider.For<OutputVisitor>();
         private readonly Dictionary<string, string> _arg;
-        private readonly Dictionary<string, string> _common;
+        private readonly Dictionary<string, string> _gitInfo;
         private readonly Dictionary<string, string> _head;
         private readonly Dictionary<string, string> _match;
         private readonly Dictionary<string, string> _output;
         private readonly Dictionary<string, string> _vs;
+        private readonly string _templateValue;
+        private readonly string _templateName;
 
         public OutputVisitor(
+            string templateName,
+            string templateValue,
             Dictionary<string, string> arg,
-            Dictionary<string, string> common,
+            Dictionary<string, string> gitInfo,
             Dictionary<string, string> head,
             Dictionary<string, string> match,
             Dictionary<string, string> output,
-            Dictionary<string, string> vs
-        )
+            Dictionary<string, string> vs)
         {
+            _templateName = templateName;
+            _templateValue = templateValue;
             _arg = arg;
-            _common = common;
+            _gitInfo = gitInfo;
             _head = head;
             _match = match;
             _output = output;
@@ -34,10 +44,11 @@ namespace IntelliSearch.FlexVersion
 
         public override string VisitFunction(global::OutputParser.FunctionContext context)
         {
-            // TODO: Fix the return of , (to something that is easy to split on)
             var args = new List<string>();
-            var paramContext = ((IRuleNode)context.GetChild(2)).RuleContext; // 2nd index is always the params
+            var paramContext = ((IRuleNode)context.GetChild(2)).RuleContext;
             var res = new StringBuilder();
+            bool lastWasComma = false;
+            bool lastHasValue = false;
             for (var i = 0; i < paramContext.ChildCount; i++)
             {
                 var child = paramContext.GetChild(i);
@@ -45,86 +56,158 @@ namespace IntelliSearch.FlexVersion
                 {
                     args.Add(res.ToString());
                     res.Clear();
+                    lastWasComma = true;
+                    lastHasValue = false;
                     continue;
                 }
+
+                lastWasComma = false;
+                lastHasValue = true;
                 res.Append(VisitChildren(((IRuleNode) child).RuleContext));
             }
-            if (res.Length > 0)
+
+            if (lastHasValue || lastWasComma)
             {
                 args.Add(res.ToString());
             }
 
             var method = context.children[0].GetText().Substring(1); // Skip the $ character
+            string errMsg;
             switch (method.ToLowerInvariant())
             {
-                case "add":
-                    if (args.Count != 2) throw new ArgumentException("Error: The Add method takes 2 arguments.");
-                    if (!int.TryParse(args[0].Trim(), out var aa)) throw new ArgumentException("Error: The Add method's 1nd argument must be convertable to an integer.");
-                    if (!int.TryParse(args[1].Trim(), out var ab)) throw new ArgumentException("Error: The Add method's 2rd argument must be convertable to an integer.");
-                    return (aa+ab).ToString();
+                case "if":
+                    if (args.Count != 3) { errMsg = "The $If method takes 3 arguments."; break; }
+                    if (!bool.TryParse(args[0].Trim(), out var expr)) { errMsg = "The $If method's 1st argument must be convertable to a boolean."; break; }
+                    return expr ? args[1] : args[2];
 
-                case "sub":
-                    if (args.Count != 2) throw new ArgumentException("Error: The Sub method takes 2 arguments.");
-                    if (!int.TryParse(args[0].Trim(), out var sa)) throw new ArgumentException("Error: The Sub method's 1nd argument must be convertable to an integer.");
-                    if (!int.TryParse(args[1].Trim(), out var sb)) throw new ArgumentException("Error: The Sub method's 2rd argument must be convertable to an integer.");
-                    return (sa - sb).ToString();
+                case "ifnot":
+                    if (args.Count != 3) { errMsg = "The $IfNot method takes 3 arguments."; break; }
+                    if (!bool.TryParse(args[0].Trim(), out var exprNot)) { errMsg = "The $IfNot method's 1st argument must be convertable to a boolean."; break; }
+                    return !exprNot ? args[1] : args[2];
 
-                case "mul":
-                    if (args.Count != 2) throw new ArgumentException("Error: The Mul method takes 2 arguments.");
-                    if (!int.TryParse(args[0].Trim(), out var ma)) throw new ArgumentException("Error: The Mul method's 1nd argument must be convertable to an integer.");
-                    if (!int.TryParse(args[1].Trim(), out var mb)) throw new ArgumentException("Error: The Mul method's 2rd argument must be convertable to an integer.");
-                    return (ma * mb).ToString();
+                case "ifblank":
+                    if (args.Count != 3) { errMsg = "The $IfBlank method takes 3 arguments."; break; }
+                    return string.IsNullOrWhiteSpace(args[0]) ? args[1] : args[2];
 
-                case "div":
-                    if (args.Count != 2) throw new ArgumentException("Error: The Mul method takes 2 arguments.");
-                    if (!int.TryParse(args[0].Trim(), out var da)) throw new ArgumentException("Error: The Div method's 1nd argument must be convertable to an integer.");
-                    if (!int.TryParse(args[1].Trim(), out var db)) throw new ArgumentException("Error: The Div method's 2rd argument must be convertable to an integer.");
-                    return (da / db).ToString();
+                case "ifnotblank":
+                    if (args.Count != 3) { errMsg = "The $IfNotBlank method takes 3 arguments."; break; }
+                    return !string.IsNullOrWhiteSpace(args[0]) ? args[1] : args[2];
+
+                case "equal":
+                    if (args.Count != 2) { errMsg = "The $Equal method takes 2 arguments."; break; }
+                    return (args[0] == args[1]).ToString();
+
+                case "notequal":
+                    if (args.Count != 2) { errMsg = "The $NotEqual method takes 2 arguments."; break; }
+                    return (args[0] != args[1]).ToString();
+
+                case "index":
+                    if (args.Count != 2) { errMsg = "The $Index method takes 2 arguments."; break; }
+                    return args[0].IndexOf(args[1], StringComparison.Ordinal).ToString();
+
+                case "lastindex":
+                    if (args.Count != 2) { errMsg = "The $LastIndex method takes 2 arguments."; break; }
+                    return args[0].LastIndexOf(args[1], StringComparison.Ordinal).ToString();
 
                 case "length":
-                    if (args.Count != 1) throw new ArgumentException("Error: The Length method takes 1 argument.");
+                    if (args.Count != 1) { errMsg = "The $Length method takes 1 argument."; break; }
                     return args[0].Length.ToString();
 
+                case "calc":
+                    if (args.Count != 1) { errMsg = "The $Calc method takes 1 argument."; break; }
+                    return new DataTable().Compute(args[0], null).ToString();
+
+                case "regexmatch":
+                    if (args.Count != 2) { errMsg = "The $RegexMatch method takes 2 arguments."; break; }
+                    return Regex.Match(args[0], args[1]).Success.ToString();
+
+                case "regexreplace":
+                    if (args.Count != 3) { errMsg = "The $RegexReplace method takes 3 arguments."; break; }
+                    return Regex.Replace(args[0], args[1], args[2]);
+
                 case "padleft":
-                    if (args.Count != 3) throw new ArgumentException("Error: The PadLeft method takes 3 arguments.");
-                    if (!int.TryParse(args[1].Trim(), out var totalWidth)) throw new ArgumentException("Error: The PadLeft method's 2nd argument must be convertable to an integer.");
-                    if (args[2].Length != 1) throw new ArgumentException("Error: The PadLeft method's 3rd argument must be a single character.");
-                    return args[0].PadLeft(totalWidth, args[2][0]);
+                    if (args.Count != 3) { errMsg = "The $PadLeft method takes 3 arguments."; break; }
+                    if (!int.TryParse(args[1].Trim(), out var totalWidthLeft)) { errMsg = "The $PadLeft method's 2nd argument must be convertable to an integer."; break; }
+                    if (args[2].Length != 1) { errMsg = "The $PadLeft method's 3rd argument must be a single character."; break; }
+                    return args[0].PadLeft(totalWidthLeft, args[2][0]);
+
+                case "padright":
+                    if (args.Count != 3) { errMsg = "The $PadRight method takes 3 arguments."; break; }
+                    if (!int.TryParse(args[1].Trim(), out var totalWidthRight)) { errMsg = "The $PadRight method's 2nd argument must be convertable to an integer."; break; }
+                    if (args[2].Length != 1) { errMsg = "The $PadRight method's 3rd argument must be a single character."; break; }
+                    return args[0].PadRight(totalWidthRight, args[2][0]);
 
                 case "substring":
-                    if (args.Count != 3) throw new ArgumentException("Error: The Substring method takes 3 arguments.");
-                    if (!int.TryParse(args[1].Trim(), out var from)) throw new ArgumentException("Error: The Substring method's 2nd argument must be convertable to an integer.");
-                    if (!int.TryParse(args[2].Trim(), out var to)) throw new ArgumentException("Error: The Substring method's 3rd argument must be convertable to an integer.");
+                    if (args.Count != 3) { errMsg = "The $Substring method takes 3 arguments."; break; }
+                    if (!int.TryParse(args[1].Trim(), out var from)) { errMsg = "The $Substring method's 2nd argument must be convertable to an integer."; break; }
+                    if (!int.TryParse(args[2].Trim(), out var to)) { errMsg = "The $Substring method's 3rd argument must be convertable to an integer."; break; }
                     if (from + to > args[0].Length) to = args[0].Length - from;
                     return args[0].Substring(from, to);
 
-                case "replaceifempty":
-                    if (args.Count != 2) throw new ArgumentException("Error: The ReplaceIfEmpty method takes 2 arguments.");
-                    return string.IsNullOrWhiteSpace(args[0]) ? args[1] : args[0];
+                case "trim":
+                    if (args.Count != 1) { errMsg = "The $Trim method takes 1 argument."; break; }
+                    return args[0].Trim();
 
-                case "ifempty":
-                    if (args.Count != 2) throw new ArgumentException("Error: The IfEmpty method takes 2 arguments.");
-                    return string.IsNullOrWhiteSpace(args[0]) ? args[1] : string.Empty;
+                case "trimstart":
+                    if (args.Count != 1) { errMsg = "The $TrimStart method takes 1 argument."; break; }
+                    return args[0].TrimStart();
 
-                case "replaceifnotempty":
-                    if (args.Count != 2) throw new ArgumentException("Error: The ReplaceIfNotEmpty method takes 2 arguments.");
-                    return !string.IsNullOrWhiteSpace(args[0]) ? args[1] : args[0];
+                case "trimend":
+                    if (args.Count != 1) { errMsg = "The $TrimEnd method takes 1 argument."; break; }
+                    return args[0].TrimEnd();
 
-                case "ifnotempty":
-                    if (args.Count != 2) throw new ArgumentException("Error: The IfNotEmpty method takes 2 arguments.");
-                    return !string.IsNullOrWhiteSpace(args[0]) ? args[1] : string.Empty;
+                case "datetime":
+                    if (args.Count != 2) { errMsg = "The $DateTime method takes 2 arguments."; break; }
+                    if (!DateTime.TryParse(args[0], out var dateTime)) { errMsg = "The $DateTime method's 1st parameter was not convertable to a DateTime."; break; }
+                    return dateTime.ToString(args[1]);
 
-                case "ifemptyelse":
-                    if (args.Count != 3) throw new ArgumentException("Error: The IfEmptyElse method takes 3 arguments.");
-                    return string.IsNullOrWhiteSpace(args[0]) ? args[1] : args[2];
+                case "datetimenow":
+                    if (args.Count != 1) { errMsg = "The $DateTimeNow method takes 1 argument."; break; }
+                    return DateTime.Now.ToString(args[0]);
 
-                case "ifnotemptyelse":
-                    if (args.Count != 3) throw new ArgumentException("Error: The IfNotEmptyElse method takes 3 arguments.");
-                    return !string.IsNullOrWhiteSpace(args[0]) ? args[1] : args[2];
+                case "env":
+                    if (args.Count != 1) { errMsg = "The $Env method takes 1 argument."; break; }
+                    var env = Environment.GetEnvironmentVariable(args[0]) ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(env)) Logger.Warn($"$Env({args[0]}) is empty. This may or may not be intentional. Used in: {_templateName}='{_templateValue}'");
+                    return env;
+
+                case "arg":
+                    if (args.Count != 1) { errMsg = "The $Arg method takes 1 argument."; break; }
+                    var arg = _arg.ContainsKey(args[0]) ? _arg[args[0]] : string.Empty;
+                    if (string.IsNullOrWhiteSpace(arg)) Logger.Warn($"$Arg({args[0]}) is empty. This may or may not be intentional. Used in: {_templateName}='{_templateValue}'");
+                    return arg;
+
+                case "match":
+                    if (args.Count != 1) { errMsg = "The $Match method takes 1 argument."; break; }
+                    var match = _match.ContainsKey(args[0]) ? _match[args[0]] : string.Empty;
+                    if (string.IsNullOrWhiteSpace(match)) Logger.Warn($"$Match({args[0]}) is empty. This may or may not be intentional. Used in: {_templateName}='{_templateValue}'");
+                    return match;
+
+                case "versionsource":
+                    if (args.Count != 1) { errMsg = "The $VersionSource method takes 1 argument."; break; }
+                    var vs = _vs.ContainsKey(args[0]) ? _vs[args[0]] : null;
+                    if (vs == null) { errMsg = $"$VersionSource({args[0]}) is undefined."; break; }
+                    return vs;
+
+                case "gitinfo":
+                    if (args.Count != 1) { errMsg = "The $GitInfo method takes 1 argument."; break; }
+                    var gi = _gitInfo.ContainsKey(args[0]) ? _gitInfo[args[0]] : null;
+                    if (gi == null) { errMsg = $"$GitInfo({args[0]}) is undefined."; break; }
+                    return gi;
+
+                case "head":
+                    if (args.Count != 1) { errMsg = "The $Head method takes 1 argument."; break; }
+                    var head = _head.ContainsKey(args[0]) ? _head[args[0]] : null;
+                    if (head == null) { errMsg = $"$Head({args[0]}) is undefined."; break; }
+                    return head;
 
                 default:
-                    throw new ArgumentException($"Error: Unknown method '{method}'.");
+                    errMsg = $"Unknown method $'{method}({string.Join(",", args)})'.";
+                    break;
             }
+
+            Logger.Error($"{errMsg} Used in: {_templateName}='{_templateValue}'");
+            return $"{method}({string.Join(",", args)})";
         }
 
         public override string VisitText(global::OutputParser.TextContext context)
@@ -136,61 +219,11 @@ namespace IntelliSearch.FlexVersion
         {
             var text = context.GetText();
             var inner = text.Substring(1, text.Length - 2);
-            var match = Regex.Match(inner, @"(?<Type>\w+):(?<Key>.+)",
-                RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
-            if (match.Success)
-            {
-                var type = match.Groups["Type"].Value;
-                var key = match.Groups["Key"].Value;
-                switch (type.ToLowerInvariant())
-                {
-                    case "arg":
-                        if (_arg.ContainsKey(key))
-                        {
-                            return _arg[key];
-                        }
+            if (_output.ContainsKey(inner)) return _output[inner];
 
-                        throw new ArgumentException($"Arg:'{key}' was not found.");
-                    case "common":
-                        if (_common.ContainsKey(key))
-                        {
-                            return _common[key];
-                        }
-
-                        throw new ArgumentException($"Common:'{key}' was not found.");
-                    case "head":
-                        if (_head.ContainsKey(key))
-                        {
-                            return _head[key];
-                        }
-
-                        throw new ArgumentException($"Head:'{key}' was not found.");
-                    case "match":
-                        if (_match.ContainsKey(key))
-                        {
-                            return _match[key];
-                        }
-
-                        throw new ArgumentException($"Match:'{key}' was not found.");
-                    case "vs":
-                        if (_vs.ContainsKey(key))
-                        {
-                            return _vs[key];
-                        }
-
-                        throw new ArgumentException($"VS:'{key}' was not found.");
-                    case "env":
-                        return Environment.GetEnvironmentVariable(key);
-
-                    default:
-                        throw new ArgumentException($"The type of the variable '{text}' is not recognized.");
-                }
-            }
-
-            return _output.ContainsKey(inner)
-                ? _output[inner]
-                : throw new ArgumentException($"The varaiable '{text}' is not recognized as a variable.");
+            Logger.Error($"The statement '<{text}>' is not recognixed as a supported variable. Used in: {_templateName}='{_templateValue}')");
+            return $"{text}";
         }
 
         protected override string AggregateResult(string aggregate, string nextResult)

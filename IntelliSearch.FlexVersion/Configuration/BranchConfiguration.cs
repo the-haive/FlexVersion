@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace IntelliSearch.FlexVersion.Configuration
 {
@@ -40,9 +40,9 @@ namespace IntelliSearch.FlexVersion.Configuration
         public string Regex { get; set; }
 
         /// <summary>
-        /// Contains the configuration on how results are to be generated.
+        /// Contains the configuration templates for how output is to be generated. 
         /// </summary>
-        public ResultsConfiguration Results { get; set; }
+        public Dictionary<string, string> Output { get; set; }
 
         /// <summary>
         /// Defines how version-sources are to be detected and handled.

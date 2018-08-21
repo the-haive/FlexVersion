@@ -13,11 +13,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
+		build.cake = build.cake
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cake.FlexVersion", "Cake.FlexVersion\Cake.FlexVersion.csproj", "{F2BF2A21-DF4D-4ECC-AB27-9F0F794C015B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntelliSearch.FlexVersion.OutputParser", "IntelliSearch.FlexVersion.OutputParser\IntelliSearch.FlexVersion.OutputParser.csproj", "{A08AF2EB-438B-467C-B34D-1F43B633FC7C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IntelliSearch.FlexVersion.OutputParser", "IntelliSearch.FlexVersion.OutputParser\IntelliSearch.FlexVersion.OutputParser.csproj", "{A08AF2EB-438B-467C-B34D-1F43B633FC7C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build", "Build", "{5A5A7711-166A-4AEB-AED6-B3440AA81AC4}"
+	ProjectSection(SolutionItems) = preProject
+		build\settings.yml = build\settings.yml
+		build\Utils.cake = build\Utils.cake
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

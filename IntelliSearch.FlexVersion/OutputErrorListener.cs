@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Antlr4.Runtime;
 
 namespace IntelliSearch.FlexVersion

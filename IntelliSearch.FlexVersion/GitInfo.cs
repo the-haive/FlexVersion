@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
@@ -54,5 +54,9 @@ namespace IntelliSearch.FlexVersion
         /// </summary>
         public List<Commit> LogToVersionSource { get; }
 
+        /// <summary>
+        /// The short form of the branchName is very often the last part
+        /// </summary>
+        public string ShortBranchName => BranchName.Split('/').Last();
     }
 }

@@ -2,7 +2,7 @@
   "profiles": {
     "IntelliSearch.FlexVersion.Console": {
       "commandName": "Project",
-      "commandLineArgs": "-c .\\flexversion.yml -r c:\\src\\ent\\ -v Configuration=Release Server=BAMBOO"
+      "commandLineArgs": "-c .\\flexversion.yml -r ..\\/ -v Configuration=Release -l Tracxe"
     }
   }
 }

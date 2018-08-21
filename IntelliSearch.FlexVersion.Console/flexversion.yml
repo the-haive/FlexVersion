@@ -78,28 +78,24 @@ Branches:
         # - Match:* # The * denotes where you input the detected groups in the VersionPattern. I.e. Match:Major. 
         #   NB! The default example uses CommitCount, for OnCommit and OnMerge.
         # You can control the generation using standard .Net string formatting (using interpolated values)
-        Results: &RESULTS_DEFAULT
-            DateTimeFormat: yyMMdd-HHmmss
+        Output: &OUTPUT_DEFAULT
+            _DateTimeNow: '$DateTimeNow(yyMMdd-HHmmss)'
+            Version: '$Match(Major).$Match(Minor).$Match(Patch)'
 
-            Output: &OUTPUT_DEFAULT
-                Version: <Match:Major>.<Match:Minor>.<Match:Patch>
+            _PreReleaseRaw: '<_DateTimeNow>.$GitInfo(BranchName)'
+            _MetadataRaw: 'configuration.$Arg(Configuration).server.$Env(COMPUTERNAME).branch.$GitInfo(BranchName).buildDate.<_DateTimeNow>.author.$Head(Author).commitCount.$Match(CommitCount)'
 
-                PreReleaseRaw: <Common:DateTimeNow>.<Common:ShortBranchName>
-                MetadataRaw: configuration.<Arg:Configuration>.server.<Env:COMPUTERNAME>.branch.<Common:BranchName>.buildDate.<Common:DateTimeNow>.author.<Head:Author>.commitCount.<Match:CommitCount>
+            PreRelease: '$IfNotBlank(<_PreReleaseRaw>,-<_PreReleaseRaw>,)' # Append with -, if it has value
+            Metadata: '$IfNotBlank(<_MetadataRaw>,+<_MetadataRaw>,)' # Append with +, if it has value
 
-                PreRelease: $IfNotEmpty(<PreReleaseRaw>,-<PreReleaseRaw>) # Append with -, if it has value
-                Metadata: $IfNotEmpty(<MetadataRaw>,+<MetadataRaw>) # Append with +, if it has value
+            _SemVerPreRelease: '<Version><PreRelease><Metadata>'
+            SemVerPreRelease: '$RegexReplace(<_SemVerPreRelease>,[^0-9A-Za-z-.]+,-)'
 
-                SemVer: <Version><PreRelease><Metadata>
+            SemVer: '<Version>'
 
-                NuGetV2: $Substring(<Version><PreRelease>,0,80) # Max 80 chars long
-
-            CleanOutput: 
-                InvalidPattern: '[^0-9A-Za-z-.]+' # These are the character that are invalid in SemVer (the ^ negates the character class)
-                Replacement: '-' 
-                OutputMatch: PreReleaseRaw|MetadataRaw
-
-                    
+            _NuGetV2PreRelease: '$Substring(<Version><PreRelease>,0,80)' # Max 80 chars long
+            NuGetV2PreRelease: '$RegexReplace(<_NuGetV2PreRelease>,[^0-9A-Za-z-.]+,-)' 
+                  
 
     # The below samples are for GitFlow, the way the FlexVersion author likes it. Please adapt to your needs.
   
@@ -109,40 +105,27 @@ Branches:
     # We also want each commit to bump the Patch.
     # The branch has a prerelease-label, but for release builds the build-script should choose the release-version-tag. 
     # For 'debug'-builds the prerelease-version can still be useful, and the 'final' suggestion here will give it fairly high precedence (higher than 0dev, alpha and beta).
-    Master:
+    Master: &BRANCH_MASTER
         <<: *BRANCH_DEFAULT
         Regex: master
         OnCommit: 
             Patch: '+1'
+            CommitCount: '+1'
         OnMerge:
+            '*': # Default for merge from any branch
+                CommitCount: '+1'
             Hotfix: 
                 Patch: '+1'
-        Results:
-            <<: *RESULTS_DEFAULT
-            Output:
-                Label: '$ReplaceIfEmpty(<Match:Label>,qa)'
-                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
-                <<: *OUTPUT_DEFAULT
-                # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
-                PreReleaseRaw: '<Label>.<Match:CommitCount>'
+        Output: &OUTPUT_MASTER
+            Label: '$IfBlank($Match(Label),qa,$Match(Label))'
+            <<: *OUTPUT_DEFAULT
+            # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
+            _PreReleaseRaw: '$IfBlank(<Label>,qa.,<Label>.)$Match(CommitCount)'
 
     # The support branch is just the same as the master-branch. 
     Support:
-        <<: *BRANCH_DEFAULT
+        <<: *BRANCH_MASTER
         Regex: 'support[/-]'
-        OnCommit: 
-            Patch: '+1'
-        OnMerge:
-            Hotfix: 
-                Patch: '+1'
-        Results:
-            <<: *RESULTS_DEFAULT
-            Output:
-                Label: '$ReplaceIfEmpty(<Match:Label>,qa)'
-                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
-                <<: *OUTPUT_DEFAULT
-                # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
-                PreReleaseRaw: '<Label>.<Match:CommitCount>'
 
     # Release-branches are branched off from develop- or support-branches. 
     # If branched from develop they merge back to develop, and when the stabilizing is complete it is also merged to master (the release-branch is then deleted).
@@ -150,16 +133,12 @@ Branches:
     # release-branches are about stabilizing (as they are supposed to be feature-complete). But, sometimes a feature was forgotten and needs to be added. Also, 
     # bugfixes may also be applied. Both the feature and the issue may and may not have it's own branch. In any cases it should bump on commits and 
     # on merges. Also, no merge will be considered as a version-source.
-    Release:
+    Release: &BRANCH_RELEASE
         <<: *BRANCH_DEFAULT
         Regex: 'release[/-]'
-        Results:
-            <<: *RESULTS_DEFAULT
-            Output:
-                Label: '$ReplaceIfEmpty(<Match:Label>,beta)'
-                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
-                <<: *OUTPUT_DEFAULT
-                PreReleaseRaw: '<Label>.<Match:CommitCount>'
+        Output: &OUTPUT_RELEASE
+            <<: *OUTPUT_MASTER
+            Label: '$IfBlank($Match(Label),beta,$Match$(Label))'
 
     # Develop is the "next-version" branch. Ideally it is merged off from master. For older repos with history this might not always be the case. But, when the master is 
     # updated by a release-branch they will be in sync eventually anyway. 
@@ -167,34 +146,20 @@ Branches:
     # Merges are as default, BumpPre, too. 
     # The branch has no OnMerge that allows a version-source from a merge. Meaning that the version-source for this branch must be a tag.
     Develop:
-        <<: *BRANCH_DEFAULT
+        <<: *BRANCH_RELEASE
         Regex: develop
-        Results:
-            <<: *RESULTS_DEFAULT
-            Output:
-                Label: '$ReplaceIfEmpty(<Match:Label>,alpha)'
-                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
-                <<: *OUTPUT_DEFAULT
-                PreReleaseRaw: '<Label>.<Match:CommitCount>'
+        Output:
+            <<: *OUTPUT_RELEASE
+            Label: '$IfBlank($Match(Label),alpha,$Match$(Label))'
 
     # Feature and issue-branches are both considered 'development' state work. They have default behaviour for bumping commits and merges and only take 
     # version-source via tag. They (as well as unidentified branches) use the ShortDateTime as label and add the PreReleaseBranch to the pre-release-version.
     Feature:
         <<: *BRANCH_DEFAULT
         Regex: '(feature|issue|.+-/d+)[/-]' # Also handle Jira-branches without feature or issue-prefix
-        Results:
-            <<: *RESULTS_DEFAULT
-            Output:
-                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
-                <<: *OUTPUT_DEFAULT
 
     # Hotfix branches are branched off from master and support. 
     # Commits and merges within this branch should just BumpPre.
     Hotfix:
         <<: *BRANCH_DEFAULT
         Regex: hotfix[/-]
-        Results:
-            <<: *RESULTS_DEFAULT
-            Output:
-                NuGetPreRelease: '<Label>-$PadLeft(<Match:CommitCount>,4,0)'
-                <<: *OUTPUT_DEFAULT

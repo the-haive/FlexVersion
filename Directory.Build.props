@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <Product>IntelliSearch.FlexVersion</Product>
+    <Company>IntelliSearch Software AS</Company>
+    <Authors>Spiralis</Authors>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+  <Import Project=".\build\Generated.Build.props" Condition="Exists('.\build\Generated.Build.props')"/>
+</Project>

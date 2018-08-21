@@ -82,19 +82,19 @@ Branches:
             _DateTimeNow: '$DateTimeNow(yyMMdd-HHmmss)'
             Version: '$Match(Major).$Match(Minor).$Match(Patch)'
 
-            _PreReleaseRaw: '<_DateTimeNow>.$GitInfo(BranchName)'
-            _MetadataRaw: 'configuration.$Arg(Configuration).server.$Env(COMPUTERNAME).branch.$GitInfo(BranchName).buildDate.<_DateTimeNow>.author.$Head(Author).commitCount.$Match(CommitCount)'
+            _PreRelease: '<_DateTimeNow>.$GitInfo(BranchName)'
+            _PreReleaseValid: '$RegexReplace(<_PreRelease>,[^0-9A-Za-z-.]+,-)'
 
-            PreRelease: '$IfNotBlank(<_PreReleaseRaw>,-<_PreReleaseRaw>,)' # Append with -, if it has value
-            Metadata: '$IfNotBlank(<_MetadataRaw>,+<_MetadataRaw>,)' # Append with +, if it has value
+            _Metadata: 'configuration.$Arg(Configuration).server.$Env(COMPUTERNAME).branch.$GitInfo(BranchName).buildDate.<_DateTimeNow>.author.$Head(Author).commitCount.$Match(CommitCount)'
+            _MetadataValid: '$RegexReplace(<_Metadata>,[^0-9A-Za-z-.]+,-)'
 
-            _SemVerPreRelease: '<Version><PreRelease><Metadata>'
-            SemVerPreRelease: '$RegexReplace(<_SemVerPreRelease>,[^0-9A-Za-z-.]+,-)'
+            PreRelease: '$IfNotBlank(<_PreReleaseValid>,-<_PreReleaseValid>,)' # Append with -, if it has value
+            Metadata: '$IfNotBlank(<_MetadataValid>,+<_MetadataValid>,)' # Append with +, if it has value
 
+            SemVerPreRelease: '<Version><PreRelease><Metadata>'
             SemVer: '<Version>'
 
-            _NuGetV2PreRelease: '$Substring(<Version><PreRelease>,0,80)' # Max 80 chars long
-            NuGetV2PreRelease: '$RegexReplace(<_NuGetV2PreRelease>,[^0-9A-Za-z-.]+,-)' 
+            NuGetV2PreRelease: '$Substring(<Version><PreRelease>,0,80)' # Max 80 chars long
                   
 
     # The below samples are for GitFlow, the way the FlexVersion author likes it. Please adapt to your needs.
@@ -120,7 +120,7 @@ Branches:
             Label: '$IfBlank($Match(Label),qa,$Match(Label))'
             <<: *OUTPUT_DEFAULT
             # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
-            _PreReleaseRaw: '$IfBlank(<Label>,qa.,<Label>.)$Match(CommitCount)'
+            _PreRelease: '$IfBlank(<Label>,qa.,<Label>.)$Match(CommitCount)'
 
     # The support branch is just the same as the master-branch. 
     Support:
@@ -138,7 +138,7 @@ Branches:
         Regex: 'release[/-]'
         Output: &OUTPUT_RELEASE
             <<: *OUTPUT_MASTER
-            Label: '$IfBlank($Match(Label),beta,$Match$(Label))'
+            Label: '$IfBlank($Match(Label),beta,$Match(Label))'
 
     # Develop is the "next-version" branch. Ideally it is merged off from master. For older repos with history this might not always be the case. But, when the master is 
     # updated by a release-branch they will be in sync eventually anyway. 
@@ -150,7 +150,7 @@ Branches:
         Regex: develop
         Output:
             <<: *OUTPUT_RELEASE
-            Label: '$IfBlank($Match(Label),alpha,$Match$(Label))'
+            Label: '$IfBlank($Match(Label),alpha,$Match(Label))'
 
     # Feature and issue-branches are both considered 'development' state work. They have default behaviour for bumping commits and merges and only take 
     # version-source via tag. They (as well as unidentified branches) use the ShortDateTime as label and add the PreReleaseBranch to the pre-release-version.

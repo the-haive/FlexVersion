@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "IntelliSearch.FlexVersion.Console": {
-      "commandName": "Project",
-      "commandLineArgs": "-c .\\flexversion.yml -r ..\\/ -v Configuration=Release -l Tracxe"
-    }
-  }
-}

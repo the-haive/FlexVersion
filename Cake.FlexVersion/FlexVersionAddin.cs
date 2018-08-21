@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Cake.Core;
 using Cake.Core.Annotations;
 using IntelliSearch.FlexVersion;
@@ -10,16 +11,15 @@ namespace Cake.FlexVersion
 {
     /// <summary>
     /// TODO: Add liblog wrapper, that consumes log-entries and makes them cake-log-messages.
-    /// TODO: Add support for argument variables.
     /// </summary>
     public static class Addin
     {
         [CakeMethodAlias]
-        public static Results FlexVersion(this ICakeContext context, FlexVersionConfiguration configuration)
+        public static Results FlexVersion(this ICakeContext context, FlexVersionConfiguration configuration, params string[] arguments)
         {
             try
             {
-                return new IntelliSearch.FlexVersion.FlexVersion(configuration).Analyze();
+                return new IntelliSearch.FlexVersion.FlexVersion(configuration, null, arguments).Analyze();
             }
             catch (Exception ex)
             {
@@ -29,11 +29,11 @@ namespace Cake.FlexVersion
         }
 
         [CakeMethodAlias]
-        public static Results FlexVersion(this ICakeContext context, FlexVersionConfiguration configuration, string repoPath)
+        public static Results FlexVersion(this ICakeContext context, FlexVersionConfiguration configuration, string repoPath, params string[] arguments)
         {
             try
             {
-                return new IntelliSearch.FlexVersion.FlexVersion(configuration, repoPath).Analyze();
+                return new IntelliSearch.FlexVersion.FlexVersion(configuration, repoPath, arguments).Analyze();
             }
             catch (Exception ex)
             {
@@ -43,11 +43,11 @@ namespace Cake.FlexVersion
         }
 
         [CakeMethodAlias]
-        public static Results FlexVersion(this ICakeContext context, string configFilePath)
+        public static Results FlexVersion(this ICakeContext context, string configFilePath, params string[] arguments)
         {
             try
             {
-                return new IntelliSearch.FlexVersion.FlexVersion(configFilePath).Analyze();
+                return new IntelliSearch.FlexVersion.FlexVersion(configFilePath, null, arguments).Analyze();
             }
             catch (Exception ex)
             {
@@ -57,11 +57,11 @@ namespace Cake.FlexVersion
         }
 
         [CakeMethodAlias]
-        public static Results FlexVersion(this ICakeContext context, string configFilePath, string repoPath)
+        public static Results FlexVersion(this ICakeContext context, string configFilePath, string repoPath, params string[] arguments)
         {
             try
             {
-                return new IntelliSearch.FlexVersion.FlexVersion(configFilePath, repoPath).Analyze();
+                return new IntelliSearch.FlexVersion.FlexVersion(configFilePath, repoPath, arguments).Analyze();
             }
             catch (Exception ex)
             {

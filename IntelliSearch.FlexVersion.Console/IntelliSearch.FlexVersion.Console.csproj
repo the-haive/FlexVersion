@@ -16,9 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="flexversion.next.yml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="test.yml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

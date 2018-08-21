@@ -387,7 +387,7 @@ namespace IntelliSearch.FlexVersion
             var res = new Dictionary<string, string>();
             foreach (var output in result.Output)
             {
-                if (output.Key.StartsWith("_"))
+                if (output.Key.StartsWith("~"))
                 {
                     Logger.Debug($"Stripping temporary variable: {output.Key}='{output.Value}'");
                     continue;

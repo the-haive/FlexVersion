@@ -79,17 +79,17 @@ Branches:
         #   NB! The default example uses CommitCount, for OnCommit and OnMerge.
         # You can control the generation using standard .Net string formatting (using interpolated values)
         Output: &OUTPUT_DEFAULT
-            _DateTimeNow: '$DateTimeNow(yyMMdd-HHmmss)'
+            ~DateTimeNow: '$DateTimeNow(yyMMdd-HHmmss)'
             Version: '$Match(Major).$Match(Minor).$Match(Patch)'
 
-            _PreRelease: '<_DateTimeNow>.$GitInfo(BranchName)'
-            _PreReleaseValid: '$RegexReplace(<_PreRelease>,[^0-9A-Za-z-.]+,-)'
+            ~PreRelease: '<~DateTimeNow>.$GitInfo(BranchName)'
+            ~PreReleaseValid: '$RegexReplace(<~PreRelease>,[^0-9A-Za-z-.]+,-)'
 
-            _Metadata: 'configuration.$Arg(Configuration).server.$Env(COMPUTERNAME).branch.$GitInfo(BranchName).buildDate.<_DateTimeNow>.author.$Head(Author).commitCount.$Match(CommitCount)'
-            _MetadataValid: '$RegexReplace(<_Metadata>,[^0-9A-Za-z-.]+,-)'
+            ~Metadata: 'configuration.$Arg(Configuration).server.$Env(COMPUTERNAME).branch.$GitInfo(BranchName).buildDate.<~DateTimeNow>.author.$Head(Author).commitCount.$Match(CommitCount)'
+            ~MetadataValid: '$RegexReplace(<~Metadata>,[^0-9A-Za-z-.]+,-)'
 
-            PreRelease: '$IfNotBlank(<_PreReleaseValid>,-<_PreReleaseValid>,)' # Append with -, if it has value
-            Metadata: '$IfNotBlank(<_MetadataValid>,+<_MetadataValid>,)' # Append with +, if it has value
+            PreRelease: '$IfNotBlank(<~PreReleaseValid>,-<~PreReleaseValid>,)' # Append with -, if it has value
+            Metadata: '$IfNotBlank(<~MetadataValid>,+<~MetadataValid>,)' # Append with +, if it has value
 
             SemVerPreRelease: '<Version><PreRelease><Metadata>'
             SemVer: '<Version>'
@@ -120,7 +120,7 @@ Branches:
             Label: '$IfBlank($Match(Label),qa,$Match(Label))'
             <<: *OUTPUT_DEFAULT
             # The next key-values will overwrite previously defined keys, if the key matches. Otherwise it is added.
-            _PreRelease: '$IfBlank(<Label>,qa.,<Label>.)$Match(CommitCount)'
+            ~PreRelease: '$IfBlank(<Label>,qa.,<Label>.)$Match(CommitCount)'
 
     # The support branch is just the same as the master-branch. 
     Support:

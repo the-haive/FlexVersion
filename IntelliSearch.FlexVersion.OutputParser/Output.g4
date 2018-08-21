@@ -33,4 +33,4 @@ CLOSE_PAR : ')';
 COMMA     : ',';
 OTHER     : . ;
 
-fragment ID : [_a-zA-Z] [_a-zA-Z0-9:]* ;
+fragment ID : [~_a-zA-Z] [~_a-zA-Z0-9:]* ;

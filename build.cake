@@ -20,18 +20,17 @@ var configuration = Argument("configuration", string.Empty);
 
 var solution = "./src/FlexVersion.sln";
 
-var distDir = "_dist";
+var nuGetSource = "https://int.nugettest.org"; // "https://api.nuget.org/v3/index.json";
+var nuGetApiKey = EnvironmentVariable("NuGetApiKey"); // Must be set on the computer running the build in order to push packages to NuGet.org
 
-var testDir = "_test";
-
-// var projectsToPack = new List<string> { 
-//     "./src/FlexVersion/FlexVersion.csprj",
-//     "./src/Cake.FlexVersion/Cake.FlexVersion.csprj"
-// };
+var projectsToPackage = new List<string> {
+    "./src/FlexVersion/FlexVersion.csproj",
+    "./src/Cake.FlexVersion/Cake.FlexVersion.csproj",
+};
 
 var packagesToPublishToNuGetOrg = new List<string> { 
-    $"{distDir}/FlexVersion*.nupkg",
-    $"{distDir}/Cake.FlexVersion*.nupkg"
+    "./src/FlexVersion/**/*.nupkg",
+    "./src/Cake.FlexVersion/**/*.nupkg"
 };
 
 var projectsToPublishToChoco = new List<string> { 
@@ -143,17 +142,7 @@ Task("Restore-NuGet-Packages")
 Task("Clean")
     .Description("Cleans away binaries and NuGet packages.")
     .IsDependentOn("Clean-NuGet-Dependency-Packages")
-    .IsDependentOn("Clean-Binaries")
-    .IsDependentOn("Clean-Dist");
-
-Task("Clean-Dist")
-    .Description("Removes all NuGet packages in the disttribution folder.")
-    .Does(() =>
-    {
-        Information("*** Removing NuGet packages...");
-        CleanDirectories(distDir);
-        Verbose($"*** Done removing NuGet packages.");
-    });
+    .IsDependentOn("Clean-Binaries");
 
 Task("Clean-NuGet-Dependency-Packages")
     .Description("Removes all NuGet dependency packages in the ./packages folder.")
@@ -185,15 +174,11 @@ Task("Build-Execute")
     .Description("Builds the solutions, without cleaning. Depends on the NuGetPackages (and the Generated.Build.props-file to exist.")
     .Does(() =>
     {
-        DotNetCoreBuild(solution);
-        // Information($"*** Building '{solution}' for Configuration='{configuration}'");
-        // MSBuild(solution, new MSBuildSettings()
-        //     .SetConfiguration(configuration)
-        //     .WithTarget("Build")
-        //     .UseToolVersion(MSBuildToolVersion.VS2017)
-        //     .SetVerbosity(Verbosity.Minimal)
-        //     .SetNodeReuse(false)
-        // );
+        DotNetCoreBuild(solution, new DotNetCoreBuildSettings
+                {
+                    Configuration = configuration,
+                    NoRestore = true
+                });
     });
 
 Task("Clean-Build")
@@ -210,26 +195,18 @@ Task("Test-Execute")
     .Description("Executes unit-tests, without cleaning or building. Depends on the test-binaries to already exist.")
     .Does(() =>
     {
-        // Get both tests that ends with Tests and Test
-        var testFiles = GetFiles($"./src/**/bin/{configuration}/**/*Tests.dll");
+        var projects = GetFiles($"./src/**/bin/{configuration}/**/*Tests.csproj");
 
-        if (!testFiles.Any()) return;
-
-        EnsureDirectoryExists(testDir);
-
-        NUnit3(testFiles, new NUnit3Settings {
-            Timeout = 30000,
-            StopOnError = true,
-            NoHeader = true,
-            Results = new[]
-            {
-                new NUnit3Result
-                {
-                    FileName = new FilePath($"{testDir}/TestResult.xml"),
-                    Format="nunit2"
-                }
-            },
-        });
+        foreach(var project in projects)
+        {
+            DotNetCoreTest(
+              project.FullPath,
+              new DotNetCoreTestSettings {
+                    Configuration = configuration,
+                    NoRestore = true,
+                    NoBuild = true
+            });
+        }
     });
 
 Task("Clean-Test")
@@ -246,21 +223,16 @@ Task("Package-Execute")
     .Description("Packages NuGet packages for the solutions, without cleaning, building or testing. Picks up any assembly where the name ends with 'Tests.dll' or 'Tests.dll', but limits according to the --TestFilter setting, if used.")
     .Does(() =>
     {
-        DotNetCorePack(solution);
-        // Information($"*** Packing '{solution}'...");
-
-        // foreach(var project in projectsToPack)
-        // {
-        //     NuGetPack(project, new NuGetPackSettings {
-        //         OutputDirectory = distDir,
-        //         Properties = new Dictionary<string, string>
-        //         {
-        //             { "Configuration", configuration }
-        //         },
-        //         Version = packageVersion
-        //     });
-        //     Information($"Packed {project} to {distDir}");
-        // }
+        foreach(var project in projectsToPackage)
+        {
+            DotNetCorePack(
+              project,
+              new DotNetCorePackSettings {
+                Configuration = configuration,
+                NoRestore = true,
+                NoBuild = true
+            });
+        }
     });
 
 Task("Clean-Package")
@@ -277,16 +249,39 @@ Task("Publish-Execute")
     .Description("Published NuGet packages for the solutions, without cleaning, building, testing or packaging. NB! The publishing is only performed if running on the build-server.")
     .Does(() =>
     {
-        // Publish to NuGet.org
-        var source = "https://staging.nuget.org/";
-        // var source = "https://api.nuget.org/v3/index.json";
+        if (configuration != "Release")
+        {
+            throw new Exception("Only publishing packages for Configuration=Release. No packages published.");
+        }
 
         foreach(var package in packagesToPublishToNuGetOrg)
         {
-            Information($"Publishing {package} to {source}...");
-            NuGetPush(package, new NuGetPushSettings {
-                Source = source,
-                ApiKey = EnvironmentVariable("NuGetApiKey")
+            var nuGetPackages = GetFiles(package);
+            string pkgToPublish = null;
+            if (nuGetPackages.Count > 1)
+            {
+                DateTime newest = DateTime.MinValue;
+                foreach(var pkg in nuGetPackages)
+                {
+                    if (System.IO.File.GetCreationTime(pkg.FullPath) > newest)
+                    {
+                        pkgToPublish = pkg.FullPath;
+                    }
+                }
+            }
+            else if (nuGetPackages.Count == 1)
+            {
+                pkgToPublish = nuGetPackages.First().FullPath;
+            }
+
+            if (pkgToPublish == null) return;
+
+            Information($"Publishing {pkgToPublish} to {nuGetSource}...");
+            DotNetCoreNuGetPush(
+              pkgToPublish,
+              new DotNetCoreNuGetPushSettings {
+                Source = nuGetSource,
+                ApiKey = nuGetApiKey
             });
         }
 

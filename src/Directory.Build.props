@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Product>FlexVersion</Product>
     <Company>IntelliSearch Software AS</Company>
-    <Authors>Spiralis</Authors>
+    <Authors>IntelliSearch</Authors>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
   <Import Project="./Generated.Build.props" Condition="Exists('./Generated.Build.props')"/>

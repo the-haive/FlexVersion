@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\IntelliSearch.FlexVersion\IntelliSearch.FlexVersion.csproj" />
+    <ProjectReference Include="..\FlexVersion\FlexVersion.csproj" />
   </ItemGroup>
 
 </Project>

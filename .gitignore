@@ -331,3 +331,5 @@ ASALocalRun/
 # Local History for Visual Studio
 .localhistory/
 IntelliSearch\.FlexVersion\.Console/Properties/launchSettings\.json
+
+src/Generated\.Build\.props

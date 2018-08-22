@@ -80,6 +80,8 @@ Branches:
         # You can control the generation using standard .Net string formatting (using interpolated values)
         Output: &OUTPUT_DEFAULT
             ~DateTimeNow: '$DateTimeNow(yyMMdd-HHmmss)'
+
+            Major: '$Match(Major)'
             Version: '$Match(Major).$Match(Minor).$Match(Patch)'
 
             ~PreRelease: '<~DateTimeNow>.$GitInfo(BranchName)'
@@ -91,10 +93,8 @@ Branches:
             PreRelease: '$IfNotBlank(<~PreReleaseValid>,-<~PreReleaseValid>,)' # Append with -, if it has value
             Metadata: '$IfNotBlank(<~MetadataValid>,+<~MetadataValid>,)' # Append with +, if it has value
 
-            SemVerPreRelease: '<Version><PreRelease><Metadata>'
-            SemVer: '<Version>'
-
-            NuGetV2PreRelease: '$Substring(<Version><PreRelease>,0,80)' # Max 80 chars long
+            SemVerFull: '<Version><PreRelease><Metadata>'
+            SemVerNuGetV2: '$Substring(<Version><PreRelease>,0,80)' # Max 80 chars long
                   
 
     # The below samples are for GitFlow, the way the FlexVersion author likes it. Please adapt to your needs.

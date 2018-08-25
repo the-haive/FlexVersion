@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FlexVersion.OutputParser\FlexVersion.OutputParser.csproj" PrivateAssets="all"/>
+    <ProjectReference Include="..\FlexVersion.OutputParser\FlexVersion.OutputParser.csproj"/>
   </ItemGroup>
 
   <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="ResolveReferences">

@@ -9,47 +9,58 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using IntelliSearch.FlexVersion.Configuration;
 
-/******************************************************************************
- ** ARGUMENTS *****************************************************************
- ******************************************************************************/
 
-// Default task is to show help.
+/////////////////
+// SETTINGS
+/////////////////
+
+// Default task
 var target = Argument("Target", "Help");
 
-var configuration = Argument("configuration", string.Empty);
+// Default configuration
+var configuration = Argument("configuration", "Debug");
 
+// Default solution to act on
 var solution = "./src/FlexVersion.sln";
 
+// NuGet access
 var nuGetSource = "https://int.nugettest.org"; // "https://api.nuget.org/v3/index.json";
 var nuGetApiKey = EnvironmentVariable("NuGetApiKey"); // Must be set on the computer running the build in order to push packages to NuGet.org
 
+// Which projects to post-process with `dotnet publish` in regards to include the libgit2 native dependencies
+var projectsToPublish = new List<string> {
+    "./src/FlexVersion.Console/FlexVersion.Console.csproj",
+//    "./src/Cake.FlexVersion/Cake.FlexVersion.csproj",
+};
+var publishPath = "./artifacts";
+
+// Which projects to make NuGet packages for.
 var projectsToPackage = new List<string> {
     "./src/FlexVersion/FlexVersion.csproj",
+    "./src/FlexVersion.Console/FlexVersion.Console.csproj",
     "./src/Cake.FlexVersion/Cake.FlexVersion.csproj",
 };
 
-var packagesToPublishToNuGetOrg = new List<string> { 
+// Which packages to deploy to NuGet.org
+var packagesToDeployToNuGetOrg = new List<string> { 
     "./src/FlexVersion/**/*.nupkg",
     "./src/Cake.FlexVersion/**/*.nupkg"
 };
 
-var projectsToPublishToChoco = new List<string> { 
+// Which packages to deploy to Chocolatey
+var packagesToDeployToChoco = new List<string> { 
     // TODO: Find out how to create Choco package and how to build binaries for the various platforms.
     // TODO: And, how to separate them. Same package, different packages?
-    // FlexVersion.Console.prj"
+    "./src/FlexVersion.Console/**/*.nupkg"
 }; 
 
-// variable for holding the version-info form FlexVersion
+// Global variable for holding the version-info from FlexVersion, making it accessible in all tasks.
 Dictionary<string,string> flexVersion = null;
-//string packageVersion = string.Empty;
-
-// Set default configuration
-configuration = !string.IsNullOrWhiteSpace(configuration) ? configuration : "Debug";
 
 
-/*************************************************************************
- ** Tasks ****************************************************************
- *************************************************************************/
+/////////////////
+// HELP
+/////////////////
 
 Task("Help")
     .Description("Shows the options and targets you can use.")
@@ -92,18 +103,65 @@ Task("Help")
 
 });
 
-Task("Version")
-    .Description("Shows the version of the code, as deducted by FlexVersion.")
-    .Does(() => {
-        var result = FlexVersion("./src/flexVersion.yml");
-        flexVersion = result.Output;
-        Information($"FlexVersion[SemVerFull] = {flexVersion["SemVerFull"]}");
-        Verbose(SerializeJsonPretty(flexVersion));
-        //packageVersion = configuration == "Debug" ? flexVersion["SemVerNuGetV2"] : flexVersion["Version"];
-});
+
+/////////////////
+// CLEANING
+/////////////////
+
+Task("Clean")
+    .Description("Cleans away binaries and NuGet packages.")
+    .IsDependentOn("Clean-NuGet-Dependency-Packages")
+    .IsDependentOn("Clean-Artifacts")
+    .IsDependentOn("Clean-Binaries");
+
+Task("Clean-NuGet-Dependency-Packages")
+    .Description("Removes all NuGet dependency packages in the ./packages folder.")
+    .Does(() =>
+    {
+        Information("*** Removing NuGet dependency packages...");
+        CleanDirectories("./packages");
+        Verbose($"*** Done removing NuGet dependency packages.");
+    });
+
+Task("Clean-Artifacts")
+    .Description($"Removes all publish-artifacts in the {publishPath}.")
+    .Does(() =>
+    {
+        Information("*** Removing publish-artifacts...");
+        CleanDirectories(publishPath);
+        Verbose($"*** Done removing publish-artifacts.");
+    });
+
+Task("Clean-Binaries")
+    .Description("Removes all binaries in the 'bin' and 'obj' folders, and even also calls Clean using MSBuild for the respective solutions.")
+    .Does(() =>
+    {
+        Information("*** Removing existing binaries...");
+        CleanDirectories($"./**/obj/{configuration}");
+        CleanDirectories($"./**/bin/{configuration}");
+
+        DotNetCoreClean(solution);
+    });
+
+
+/////////////////
+// PREPARE
+/////////////////
+
+Task("Prepare")
+    .Description("Prepares for building.")
+    .IsDependentOn("Restore-NuGet-Packages")
+    .IsDependentOn("Create-Generated.Build.Props");
+
+Task("Restore-NuGet-Packages")
+    .Description("Fetches all dependent NuGet packages for the solution, before even starting the build for the solution.")
+    .Does(() =>
+    {
+        DotNetCoreRestore(solution);
+    });
 
 Task("Create-Generated.Build.Props")
-    .Description("Generates a common assemblyInfo that is linked in for all built projects in the solutions.")
+    .Description("Generates a common assemblyInfo that is linked in for all built projects in the solutions, after getting the version-info from the repo.")
     .IsDependentOn("Version")
     .Does(() =>
     {
@@ -132,42 +190,29 @@ Task("Create-Generated.Build.Props")
         Verbose("*** Done creating ./src/Generated.Build.props.");
     });
 
-Task("Restore-NuGet-Packages")
-    .Description("Fetches all dependent NuGet packages for the solution, before even starting the build for the solution.")
-    .Does(() =>
-    {
-        DotNetCoreRestore(solution);
-    });
+Task("Version")
+    .Description("Gets the version of the repo, as deducted by FlexVersion.")
+    .Does(() => {
+        var result = FlexVersion("./src/flexVersion.yml", null, $"Configuration={configuration}");
+        flexVersion = result.Output;
+        Information($"FlexVersion[SemVerFull] = {flexVersion["SemVerFull"]}");
+        Verbose(SerializeJsonPretty(flexVersion));
+        //packageVersion = configuration == "Debug" ? flexVersion["SemVerNuGetV2"] : flexVersion["Version"];
+});
 
-Task("Clean")
-    .Description("Cleans away binaries and NuGet packages.")
-    .IsDependentOn("Clean-NuGet-Dependency-Packages")
-    .IsDependentOn("Clean-Binaries");
+Task("Clean-Prepare")
+    .Description("Prepares for building, after cleaning.")
+    .IsDependentOn("Clean")
+    .IsDependentOn("Prepare");
 
-Task("Clean-NuGet-Dependency-Packages")
-    .Description("Removes all NuGet dependency packages in the ./packages folder.")
-    .Does(() =>
-    {
-        Information("*** Removing NuGet dependency packages...");
-        CleanDirectories("./packages");
-        Verbose($"*** Done removing NuGet dependency packages.");
-    });
 
-Task("Clean-Binaries")
-    .Description("Removes all binaries in the 'bin' and 'obj' folders, and even also calls Clean using MSBuild for the respective solutions.")
-    .Does(() =>
-    {
-        Information("*** Removing existing binaries...");
-        CleanDirectories($"./**/obj/{configuration}");
-        CleanDirectories($"./**/bin/{configuration}");
-
-        DotNetCoreClean(solution);
-    });
+/////////////////
+// BUILDING
+/////////////////
 
 Task("Build")
-    .Description("Builds the solutions, without cleaning.")
-    .IsDependentOn("Restore-NuGet-Packages")
-    .IsDependentOn("Create-Generated.Build.Props")
+    .Description("Builds the solutions, after prepare.")
+    .IsDependentOn("Prepare")
     .IsDependentOn("Build-Execute");
 
 Task("Build-Execute")
@@ -182,9 +227,14 @@ Task("Build-Execute")
     });
 
 Task("Clean-Build")
-    .Description("Builds the solutions, after cleaning binaries and packages.")
+    .Description("Builds, after cleaning and prepare.")
     .IsDependentOn("Clean")
     .IsDependentOn("Build");
+
+
+/////////////////
+// TESTING
+/////////////////
 
 Task("Test")
     .Description("Executes unit-tests, after building. Picks up any assembly where the name ends with 'Tests.dll' or 'Tests.dll', but limits according to the --TestFilter setting, if used.")
@@ -210,17 +260,70 @@ Task("Test-Execute")
     });
 
 Task("Clean-Test")
-    .Description("Executes unit-tests, after cleaning and building. Picks up any assembly where the name ends with 'Tests.dll' or 'Tests.dll', but limits according to the --TestFilter setting, if used.")
+    .Description("Executes unit-tests, after cleaning and building.")
     .IsDependentOn("Clean")
     .IsDependentOn("Test");
 
-Task("Package")
-    .Description("Packages NuGet packages for the solutions, after building and testing.")
+
+/////////////////
+// PUBLISHING
+/////////////////
+
+Task("Publish")
+    .Description("Publishes the projects, after testing.")
     .IsDependentOn("Test")
+    .IsDependentOn("Publish-Execute");
+
+Task("Publish-Execute")
+    .Description("Publishes projects (without any task-dependencies).")
+    .Does(() =>
+    {
+        DotNetCorePublish(solution, new DotNetCorePublishSettings
+        {
+            Configuration = configuration,
+            //NoRestore = true,
+            //Runtime = "win7-x64",
+            //ArgumentCustomization = args => args.Append("--no-build"),
+            //TODO: NoBuild = true,
+            //OutputDirectory = System.IO.Path.Combine(publishPath),
+            //DiagnosticOutput = true,
+            //Verbosity = DotNetCoreVerbosity.Detailed
+        });
+        //foreach(var project in projectsToPublish)
+        //{
+        //    var path = project.Split('/').Last();
+        //    path = path.Substring(0, path.LastIndexOf('.'));
+        //    DotNetCorePublish(project, new DotNetCorePublishSettings
+        //        {
+        //            Configuration = configuration,
+        //            NoRestore = true,
+        //            Runtime = "win7-x64",
+        //            ArgumentCustomization = args => args.Append("--no-build"),
+        //            //TODO: NoBuild = true,
+        //            OutputDirectory = System.IO.Path.Combine(publishPath, path),
+        //            //DiagnosticOutput = true,
+        //            //Verbosity = DotNetCoreVerbosity.Detailed
+        //        });
+        //}
+    });
+
+Task("Clean-Publish")
+    .Description("Publishes projects, after cleaning and testing.")
+    .IsDependentOn("Clean")
+    .IsDependentOn("Publish");
+
+
+/////////////////
+// PACKAGING
+/////////////////
+
+Task("Package")
+    .Description("Packages NuGet packages, after publishing.")
+    .IsDependentOn("Publish")
     .IsDependentOn("Package-Execute");
 
 Task("Package-Execute")
-    .Description("Packages NuGet packages for the solutions, without cleaning, building or testing. Picks up any assembly where the name ends with 'Tests.dll' or 'Tests.dll', but limits according to the --TestFilter setting, if used.")
+    .Description("Packages NuGet packages (without any task-dependencies).")
     .Does(() =>
     {
         foreach(var project in projectsToPackage)
@@ -236,25 +339,31 @@ Task("Package-Execute")
     });
 
 Task("Clean-Package")
-    .Description("Packages NuGet packages for the solutions, after cleaning, building and testing.")
+    .Description("Packages NuGet packages, after cleaning and publishing.")
     .IsDependentOn("Clean")
     .IsDependentOn("Package");
 
-Task("Publish")
-    .Description("Published NuGet packages for the solutions, after building, testing and packaging. NB! The publishing is only performed if running on the build-server.")
-    .IsDependentOn("Package")
-    .IsDependentOn("Publish-Execute");
 
-Task("Publish-Execute")
-    .Description("Published NuGet packages for the solutions, without cleaning, building, testing or packaging. NB! The publishing is only performed if running on the build-server.")
+/////////////////
+// DEPLOYING
+/////////////////
+
+Task("Deploy")
+    .Description("Deploying packages, after packaging. The deployment is only performed if running on the build-server.")
+    .IsDependentOn("Package")
+    .IsDependentOn("Deploy-NuGetOrg-Execute")
+    .IsDependentOn("Deploy-Choco-Execute");
+
+Task("Deploy-NuGetOrg-Execute")
+    .Description("Deploying packages (without any task-dependencies). The deployment is only performed if running on the build-server.")
     .Does(() =>
     {
         if (configuration != "Release")
         {
-            throw new Exception("Only publishing packages for Configuration=Release. No packages published.");
+            throw new Exception("Only deploy packages for Configuration=Release. No packages deployed.");
         }
 
-        foreach(var package in packagesToPublishToNuGetOrg)
+        foreach(var package in packagesToDeployToNuGetOrg)
         {
             var nuGetPackages = GetFiles(package);
             string pkgToPublish = null;
@@ -276,7 +385,7 @@ Task("Publish-Execute")
 
             if (pkgToPublish == null) return;
 
-            Information($"Publishing {pkgToPublish} to {nuGetSource}...");
+            Information($"Deploying {pkgToPublish} to {nuGetSource}...");
             DotNetCoreNuGetPush(
               pkgToPublish,
               new DotNetCoreNuGetPushSettings {
@@ -284,18 +393,28 @@ Task("Publish-Execute")
                 ApiKey = nuGetApiKey
             });
         }
+    });
 
-		// TODO: Publish to Choco
-        Information("Push to Choco is Not implemented yet.");
-        foreach(var package in projectsToPublishToChoco)
+Task("Deploy-Choco-Execute")
+    .Description("Deploying packages (without any task-dependencies). The deployment is only performed if running on the build-server.")
+    .Does(() =>
+    {
+        if (configuration != "Release")
         {
-            //...
+            throw new Exception("Only deploy packages for Configuration=Release. No packages deployed.");
+        }
+
+        Information("Deploy to Choco is not implemented yet.");
+        foreach(var package in packagesToDeployToChoco)
+        {
+    		// TODO: Deploy on Choco
         }
     });
 
-Task("Clean-Publish")
-    .Description("Packages NuGet packages for the solutions, after cleaning, building, testing and packaging. NB! The publishing is only performed if running on the build-server.")
-    .IsDependentOn("Clean-Package")
-    .IsDependentOn("Publish");
+Task("Clean-Deploy")
+    .Description("Deploying packages, after cleaning and packaging. The deployment is only performed if running on the build-server.")
+    .IsDependentOn("Clean")
+    .IsDependentOn("Deploy");
+
 
 RunTarget(target);

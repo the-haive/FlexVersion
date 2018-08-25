@@ -4,6 +4,9 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <AssemblyName>FlexVersion.Console</AssemblyName>
+    <RootNamespace>IntelliSearch.FlexVersion.Console</RootNamespace>
+    <ApplicationIcon />
+    <StartupObject></StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,10 +22,8 @@
     <ProjectReference Include="..\FlexVersion\FlexVersion.csproj" />
   </ItemGroup>
 
+
   <ItemGroup>
-    <None Update="test.yml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="FlexVersion.yml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

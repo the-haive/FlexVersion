@@ -7,11 +7,10 @@
   "targets": {
     ".NETStandard,Version=v2.0": {},
     ".NETStandard,Version=v2.0/": {
-      "Cake.FlexVersion/1.0.0": {
+      "Cake.FlexVersion/0.9.0-180825-041902.issue-3-Setup-Cake-build": {
         "dependencies": {
           "Cake.Core": "0.25.0",
-          "FlexVersion": "1.0.0",
-          "LibGit2Sharp.NativeBinaries": "1.0.217",
+          "FlexVersion": "0.9.0-180825-041902.issue-3-Setup-Cake-build",
           "NETStandard.Library": "2.0.3"
         },
         "runtime": {
@@ -521,9 +520,9 @@
           }
         }
       },
-      "FlexVersion/1.0.0": {
+      "FlexVersion/0.9.0-180825-041902.issue-3-Setup-Cake-build": {
         "dependencies": {
-          "FlexVersion.OutputParser": "1.0.0",
+          "FlexVersion.OutputParser": "0.9.0-180825-041902.issue-3-Setup-Cake-build",
           "LibGit2Sharp": "0.25.2",
           "Microsoft.CSharp": "4.4.0",
           "Newtonsoft.Json": "11.0.2",
@@ -533,7 +532,7 @@
           "FlexVersion.dll": {}
         }
       },
-      "FlexVersion.OutputParser/1.0.0": {
+      "FlexVersion.OutputParser/0.9.0-180825-041902.issue-3-Setup-Cake-build": {
         "dependencies": {
           "Antlr4.Runtime.Standard": "4.7.1.1"
         },
@@ -544,7 +543,7 @@
     }
   },
   "libraries": {
-    "Cake.FlexVersion/1.0.0": {
+    "Cake.FlexVersion/0.9.0-180825-041902.issue-3-Setup-Cake-build": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -878,12 +877,12 @@
       "path": "yamldotnet/5.0.1",
       "hashPath": "yamldotnet.5.0.1.nupkg.sha512"
     },
-    "FlexVersion/1.0.0": {
+    "FlexVersion/0.9.0-180825-041902.issue-3-Setup-Cake-build": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "FlexVersion.OutputParser/1.0.0": {
+    "FlexVersion.OutputParser/0.9.0-180825-041902.issue-3-Setup-Cake-build": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

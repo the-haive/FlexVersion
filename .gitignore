@@ -333,3 +333,5 @@ ASALocalRun/
 IntelliSearch\.FlexVersion\.Console/Properties/launchSettings\.json
 
 src/Generated\.Build\.props
+
+src/FlexVersion\.Console/Properties/launchSettings\.json

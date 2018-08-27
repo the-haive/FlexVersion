@@ -64,7 +64,7 @@ namespace IntelliSearch.FlexVersion.Console
             }
         }
 
-        private static void ParseOptions(IEnumerable<string> args, out string configurationFile, out string repoPath, out List<string> variables, out bool diagnostic)
+        private static void ParseOptions(IEnumerable<string> args, out string configurationFile, out string repoPath, out List<string> arguments, out bool diagnostic)
         {
             var argList = args.ToList();
             if (argList.Any(i => i.ToLowerInvariant().Equals("help"))) Usage();
@@ -97,7 +97,7 @@ namespace IntelliSearch.FlexVersion.Console
             if (options.ContainsKey("-L")) ConfigureLogLevel(options["-L"].FirstOrDefault());
             configurationFile = options.ContainsKey("-C") ? options["-C"].First() : @".\flexversion.yml";
             repoPath = options.ContainsKey("-R") ? options["-R"].First() : Environment.CurrentDirectory;
-            variables = options.ContainsKey("-V") ? options["-V"] : new List<string>();
+            arguments = options.ContainsKey("-A") ? options["-A"] : new List<string>();
             diagnostic = options.ContainsKey("-D");
         }
 
@@ -130,11 +130,11 @@ namespace IntelliSearch.FlexVersion.Console
             System.Console.WriteLine();
             System.Console.WriteLine("FlexVersion (C) IntelliSearch Software AS");
             System.Console.WriteLine();
-            System.Console.WriteLine("Usage: FlexVersion.exe [-c configFile] [-r repoPath] [-v variables] [-l logLevel] [-d]");
+            System.Console.WriteLine("Usage: FlexVersion.exe [-c configFile] [-r repoPath] [-a arguments] [-l logLevel] [-d]");
             System.Console.WriteLine();
             System.Console.WriteLine(@"  -c configFile # The path to the configuration-file to use. Default: ./flexVersion.yml");
             System.Console.WriteLine(@"  -r repoPath # The path to the repository to analyze. Default: ./");
-            System.Console.WriteLine(@"  -v variables # A list of variables. I.e. '-v Configuration=Release Server=BUILDSERVER'. Default: None");
+            System.Console.WriteLine(@"  -a arguments # A list of key=value arguments to be used in the construction of the outputs. I.e. '-a Configuration=Release Server=BUILDSERVER'. Default: None");
             System.Console.WriteLine($"  -l <{validLogLevels}> # Adjust loglevel. Default: Info");
             System.Console.WriteLine(@"  -d # Turn on diagnostic-mode, adding stacktrace for errors and dumping the full result-object.");
             System.Console.WriteLine();

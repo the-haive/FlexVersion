@@ -1,0 +1,9 @@
+FUNC=1
+VAR=2
+OPEN_PAR=3
+CLOSE_PAR=4
+COMMA=5
+OTHER=6
+'('=3
+')'=4
+','=5
